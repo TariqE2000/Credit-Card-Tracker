@@ -1,10 +1,10 @@
 import Foundation
 
-/// The card list as saved on the phone.
+/// The issuer list as saved on the phone.
 struct CachedIssuers: Codable, Equatable {
-    /// The opencard-db release tag the cards came from, such as "v0.4.2".
+    /// The opencard-db release tag the issuers came from, such as "v0.4.2".
     var source: String
-    var cards: [Issuer]
+    var issuers: [Issuer]
 }
 
 /// Keeps the downloaded list on the phone so later launches need no download.
@@ -27,7 +27,7 @@ struct FileIssuerCatalogCache: IssuerCatalogCaching {
             ?? FileManager.default.temporaryDirectory
         return base
             .appendingPathComponent("BuiltInIssuers", isDirectory: true)
-            .appendingPathComponent("us-cards.json")
+            .appendingPathComponent("us-issuers.json")
     }
 
     func load() -> CachedIssuers? {

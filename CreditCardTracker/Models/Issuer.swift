@@ -1,14 +1,15 @@
 import Foundation
 
-/// A card the user can pick during onboarding, e.g. "Chase Sapphire Preferred".
+/// A bank or company that issues credit cards, e.g. "Chase" or "Navy Federal Credit Union". This is what the
+/// user picks on "Pick your cards": one row per issuer, not one row per card.
 ///
-/// The full list is downloaded from opencard-db by `IssuerCatalogStore` and saved on the phone, which is
-/// why this type is `Codable`. A short built-in list in `BuiltInIssuers` is used when it cannot load.
+/// The list is downloaded from opencard-db by `IssuerCatalogStore` and saved on the phone, which is why
+/// this type is `Codable`. A short built-in list in `BuiltInIssuers` is used when it cannot load.
 struct Issuer: Identifiable, Hashable, Codable {
-    /// Stable ID from opencard-db, e.g. "us-chase-sapphire-preferred".
+    /// Stable ID from opencard-db, e.g. "chase" or "navy-federal".
     let id: String
+    /// What the user sees, e.g. "American Express".
     let name: String
-    let issuer: String
     /// Two or three letters shown in the colored badge, e.g. "CH".
     let badgeCode: String
     /// Badge color as 0xRRGGBB. Kept as a number so the model has no UI dependency.
@@ -16,6 +17,29 @@ struct Issuer: Identifiable, Hashable, Codable {
     /// The issuer's website, used to look up its logo, e.g. "capitalone.com". Nil when the logo service
     /// does not have the issuer; the colored badge is shown instead.
     var logoDomain: String? = nil
+}
+
+extension Issuer {
+    /// An issuer with the badge letters, color and logo that `IssuerStyle` has for it.
+    init(id: String, name: String) {
+        let style = IssuerStyle.style(forIssuerID: id, issuerName: name)
+        self.init(
+            id: id,
+            name: name,
+            badgeCode: style.code,
+            badgeColorHex: style.colorHex,
+            logoDomain: style.logoDomain
+        )
+    }
+
+    /// True when `query` is part of the issuer's name, or of its ID ("amex" finds American Express).
+    /// Ignores case and accents. An empty query matches everything.
+    func matches(_ query: String) -> Bool {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        return name.localizedStandardContains(trimmed)
+            || id.replacingOccurrences(of: "-", with: " ").localizedStandardContains(trimmed)
+    }
 }
 
 // MARK: - Issuer logos
@@ -60,20 +84,19 @@ extension LogoService {
 }
 
 extension Issuer {
-    /// Where to load this card's issuer logo from. Nil when there is none to try.
+    /// Where to load this issuer's logo from. Nil when there is none to try.
     var logoURL: URL? {
         logoDomain.flatMap { LogoService.iconURL(forDomain: $0) }
     }
 }
 
-// MARK: - Cards that are not listed
+// MARK: - Banks that are not listed
 
-/// A card the user added with "My card is not listed". The user types its name on the card form,
-/// and the first word of that name is shown where a catalog card shows its issuer.
+/// A bank added with "My bank is not listed". The user types its name on the card form.
 extension Issuer {
     static let customIDPrefix = "custom-"
-    /// What an unnamed not-listed card is called.
-    static let defaultCustomName = "Other card"
+    /// What an unnamed not-listed bank is called.
+    static let defaultCustomName = "Other bank"
 
     var isCustom: Bool { id.hasPrefix(Self.customIDPrefix) }
 
@@ -81,15 +104,10 @@ extension Issuer {
         id: String = Issuer.customIDPrefix + UUID().uuidString,
         name: String = ""
     ) -> Issuer {
-        Issuer(id: id, name: name, issuer: firstWord(of: name) ?? "Not listed", badgeCode: "", badgeColorHex: 0x6B6B78)
+        Issuer(id: id, name: name, badgeCode: "", badgeColorHex: 0x6B6B78)
     }
 
-    /// "Navy Federal" gives "Navy". Nil when there is no word yet.
-    static func firstWord(of name: String) -> String? {
-        name.split(whereSeparator: \.isWhitespace).first.map(String.init)
-    }
-
-    /// The name to show. A not-listed card left unnamed is shown as "Other card".
+    /// The name to show. A not-listed bank left unnamed is shown as "Other bank".
     var displayName: String {
         guard isCustom else { return name }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)

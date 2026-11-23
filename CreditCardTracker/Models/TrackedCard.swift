@@ -76,16 +76,17 @@ struct CardDetails: Hashable {
     }
 }
 
-/// A card the user picked, together with whatever details they entered.
+/// One card the user has, together with whatever details they entered. Someone with two Chase cards has
+/// two `TrackedCard`s that share an issuer; the `id` tells them apart.
 struct TrackedCard: Identifiable, Hashable {
     let id: UUID
-    /// Changes only for a not-listed card, when the user types its name.
-    var catalogCard: Issuer
+    /// Who issued the card. Changes only for a not-listed bank, when the user types its name.
+    var issuer: Issuer
     var details: CardDetails
 
-    init(id: UUID = UUID(), catalogCard: Issuer, details: CardDetails = CardDetails()) {
+    init(id: UUID = UUID(), issuer: Issuer, details: CardDetails = CardDetails()) {
         self.id = id
-        self.catalogCard = catalogCard
+        self.issuer = issuer
         self.details = details
     }
 

@@ -1,15 +1,14 @@
 import Foundation
 
-/// How a card's badge looks: the letters, the color, and the website its logo is looked up by.
+/// How an issuer's badge looks: the letters, the color, and the website its logo is looked up by.
 struct BadgeStyle: Equatable {
     var code: String
     var colorHex: UInt32
     var logoDomain: String?
 }
 
-/// Picks the badge for a card. The card list has names and issuers but no artwork, so the badge
-/// comes from the issuer: a known color for the biggest banks, and a steady color made from the
-/// issuer's ID for everyone else (the same issuer always gets the same color).
+/// Picks the badge for an issuer: a known color for the biggest banks, and a steady color made from
+/// the issuer's ID for everyone else (the same issuer always gets the same color).
 enum IssuerStyle {
     /// Issuers listed first, in this order. Everyone else follows alphabetically.
     static let priorityIssuerIDs = [
@@ -30,9 +29,10 @@ enum IssuerStyle {
         )
     }
 
-    /// A card that does not look like its issuer. Apple Card is issued by Goldman Sachs.
-    static func style(forCardID id: String, issuerID: String, issuerName: String) -> BadgeStyle {
-        cardOverrides[id] ?? style(forIssuerID: issuerID, issuerName: issuerName)
+    /// The name shown in the list. opencard-db's registry names are used as they are, except for the few
+    /// that would confuse a US customer (see `displayNames`).
+    static func displayName(forIssuerID id: String, registryName: String) -> String {
+        displayNames[id] ?? registryName
     }
 
     // MARK: Known issuers
@@ -83,10 +83,20 @@ enum IssuerStyle {
         "hsbc": "hsbc.com",
         "credit-one-bank": "creditonebank.com",
         "fnbo": "fnbo.com",
+        "goldman-sachs": "goldmansachs.com",
     ]
 
-    private static let cardOverrides: [String: BadgeStyle] = [
-        "us-apple-card": BadgeStyle(code: "AP", colorHex: 0x4A4A52, logoDomain: "apple.com"),
+    /// Names the registry gets wrong for this app. All of these have US cards:
+    /// - "td" is called "TD Canada Trust", but its US cards are TD Bank's.
+    /// - "icbc" has Chinese characters after the name.
+    /// - "first-electronic-bank" has a long note in brackets.
+    /// - "goldman-sachs" is the bank behind the Apple Card, which is the only card it has here, and
+    ///   people look for "Apple".
+    private static let displayNames: [String: String] = [
+        "td": "TD Bank",
+        "icbc": "ICBC",
+        "first-electronic-bank": "First Electronic Bank",
+        "goldman-sachs": "Goldman Sachs (Apple Card)",
     ]
 
     // MARK: Everyone else

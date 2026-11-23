@@ -18,12 +18,21 @@ enum OnboardingRoute: Hashable {
     case addCards
 }
 
-/// Holds everything the onboarding screens share: where the user is, which cards they picked,
-/// and the details they typed in.
+/// One row of "Pick your cards": an issuer and how many cards the user has from it.
+struct IssuerPick: Hashable {
+    let issuerID: String
+    var count: Int
+
+    /// Nobody needs more than this many cards from one issuer, and it keeps the counter sensible.
+    static let maxCount = 10
+}
+
+/// Holds everything the onboarding screens share: where the user is, which issuers they picked and how
+/// many cards each has, and the details they typed in for every card.
 @MainActor
 final class OnboardingStore: ObservableObject {
-    /// The cards the user can pick from. The app passes `IssuerCatalogStore.live()`. Without one, previews
-    /// and tests get the built-in starter cards and never touch the network or the disk.
+    /// The issuers the user can pick from. The app passes `IssuerCatalogStore.live()`. Without one,
+    /// previews and tests get the built-in starter issuers and never touch the network or the disk.
     let catalog: IssuerCatalogStore
 
     init(catalog: IssuerCatalogStore? = nil) {
@@ -34,14 +43,17 @@ final class OnboardingStore: ObservableObject {
     @Published private(set) var isSignedIn = false
     @Published private(set) var hasFinishedOnboarding = false
 
-    /// Catalog IDs in the order the user tapped them. Cards added with "My card is not listed" are in here too.
-    @Published private(set) var selectedCatalogIDs: [String] = []
-    /// The picked cards with their details. Rebuilt each time the user continues from "Pick your cards".
+    /// The picked issuers in the order the user first tapped them, each with its number of cards. A bank
+    /// added with "My bank is not listed" is in here too, with one card.
+    @Published private(set) var picks: [IssuerPick] = []
+    /// The cards, one per card the user has, with their details. Cards from the same issuer sit next to
+    /// each other. Rebuilt each time the user continues from "Pick your cards".
     @Published private(set) var cards: [TrackedCard] = []
 
-    /// Catalog IDs of the cards the user already had when they tapped "Add another card". They show
-    /// as ticked and cannot be changed on the second pick screen.
-    @Published private(set) var lockedCatalogIDs: Set<String> = []
+    /// How many cards the user already had from each issuer when they tapped "Add another card"
+    /// (issuer ID to count). Those cards cannot be taken away on the second pick screen, but more can
+    /// be added. Only meaningful on that screen.
+    @Published private(set) var lockedCounts: [String: Int] = [:]
     /// The cards added with "Add another card", in order. Only these get a form on the way back to
     /// the review screen. Empty the rest of the time.
     @Published private(set) var addBatch: [UUID] = []
@@ -65,73 +77,103 @@ final class OnboardingStore: ObservableObject {
 
     // MARK: Pick your cards
 
-    var selectedCount: Int { selectedCatalogIDs.count }
+    /// Cards picked in total, across every issuer.
+    var selectedCount: Int { picks.reduce(0) { $0 + $1.count } }
 
-    func isSelected(_ card: Issuer) -> Bool {
-        selectedCatalogIDs.contains(card.id)
+    /// How many cards the user has from this issuer. 0 when it is not ticked.
+    func count(of issuer: Issuer) -> Int {
+        picks.first { $0.issuerID == issuer.id }?.count ?? 0
     }
 
-    func toggleSelection(of card: Issuer) {
-        if let index = selectedCatalogIDs.firstIndex(of: card.id) {
-            selectedCatalogIDs.remove(at: index)
+    func isSelected(_ issuer: Issuer) -> Bool {
+        count(of: issuer) > 0
+    }
+
+    /// Ticks an issuer (one card) or unticks it (no cards).
+    func toggleSelection(of issuer: Issuer) {
+        if let index = picks.firstIndex(where: { $0.issuerID == issuer.id }) {
+            picks.remove(at: index)
         } else {
-            selectedCatalogIDs.append(card.id)
+            picks.append(IssuerPick(issuerID: issuer.id, count: 1))
         }
     }
 
-    // MARK: Cards that are not listed
-
-    /// "My card is not listed": adds one more picked card. Its name is typed on its card form.
-    func addNotListedCard() {
-        selectedCatalogIDs.append(Issuer.customIDPrefix + UUID().uuidString)
+    /// The "+" button: one more card from a ticked issuer, up to `IssuerPick.maxCount`.
+    func increaseCount(of issuer: Issuer) {
+        guard let index = picks.firstIndex(where: { $0.issuerID == issuer.id }),
+              picks[index].count < IssuerPick.maxCount
+        else { return }
+        picks[index].count += 1
     }
 
-    /// Builds `cards` from the picked catalog entries, keeping any details already typed for cards
-    /// that are still picked, and opens the form for the first card.
+    /// The "−" button: one card fewer, but never below `minimum` (and never below 1; unticking is the
+    /// checkbox's job). On the second pick screen `minimum` is the number of cards already added.
+    func decreaseCount(of issuer: Issuer, minimum: Int = 1) {
+        guard let index = picks.firstIndex(where: { $0.issuerID == issuer.id }),
+              picks[index].count > max(minimum, 1)
+        else { return }
+        picks[index].count -= 1
+    }
+
+    // MARK: Banks that are not listed
+
+    /// "My bank is not listed": adds one more card, from a bank whose name is typed on the card form.
+    func addNotListedCard() {
+        picks.append(IssuerPick(issuerID: Issuer.customIDPrefix + UUID().uuidString, count: 1))
+    }
+
+    /// Builds `cards` from the picks, keeping any details already typed for cards that are still
+    /// picked, and opens the form for the first card.
     func continueFromPickCards() {
         rebuildCards()
         guard let first = cards.first else { return }
         path.append(.cardForm(first.id))
     }
 
+    /// One card for each count of each pick. A card that already exists is kept with its details; the
+    /// first `count` cards of an issuer survive when its count goes down.
     private func rebuildCards() {
-        let existing = Dictionary(
-            cards.map { ($0.catalogCard.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        cards = selectedCatalogIDs.compactMap { id -> TrackedCard? in
-            if let card = existing[id] { return card }
-            return resolvedCard(withID: id).map { TrackedCard(catalogCard: $0) }
+        var existing = Dictionary(grouping: cards, by: { $0.issuer.id })
+        var rebuilt: [TrackedCard] = []
+        for pick in picks {
+            for _ in 0..<pick.count {
+                if var kept = existing[pick.issuerID], !kept.isEmpty {
+                    rebuilt.append(kept.removeFirst())
+                    existing[pick.issuerID] = kept
+                } else if let issuer = resolvedIssuer(withID: pick.issuerID) {
+                    rebuilt.append(TrackedCard(issuer: issuer))
+                }
+            }
         }
+        cards = rebuilt
     }
 
     // MARK: Add another card (from the review screen)
 
-    /// "Add another card": opens "Pick your cards" again with the current cards already ticked.
+    /// "Add another card": opens "Pick your cards" again with the current cards already counted.
     func startAddingCards() {
-        selectedCatalogIDs = cards.map(\.catalogCard.id)
-        lockedCatalogIDs = Set(selectedCatalogIDs)
+        picks = Self.issuerPicks(from: cards)
+        lockedCounts = Dictionary(picks.map { ($0.issuerID, $0.count) }, uniquingKeysWith: { first, _ in first })
         addBatch = []
         path.append(.addCards)
     }
 
-    /// True for a card the user already has. Only meaningful on the second pick screen.
-    func isLocked(_ card: Issuer) -> Bool {
-        lockedCatalogIDs.contains(card.id)
+    /// The cards the user already had from this issuer when the second pick screen opened.
+    func lockedCount(of issuer: Issuer) -> Int {
+        lockedCounts[issuer.id] ?? 0
     }
 
     /// How many new cards are picked on the second pick screen.
     var newPickCount: Int {
-        selectedCatalogIDs.filter { !lockedCatalogIDs.contains($0) }.count
+        picks.reduce(0) { $0 + max(0, $1.count - (lockedCounts[$1.issuerID] ?? 0)) }
     }
 
     /// Continue on the second pick screen: keeps every current card and its details, adds the new
     /// ones, and opens the form for the first new card.
     func continueFromAddCards() {
+        let existingIDs = Set(cards.map(\.id))
         rebuildCards()
-        addBatch = cards
-            .filter { !lockedCatalogIDs.contains($0.catalogCard.id) }
-            .map(\.id)
+        addBatch = cards.filter { !existingIDs.contains($0.id) }.map(\.id)
         guard let first = addBatch.first else { return }
         path.append(.cardForm(first))
     }
@@ -146,8 +188,21 @@ final class OnboardingStore: ObservableObject {
         }
     }
 
-    private func resolvedCard(withID id: String) -> Issuer? {
-        if let card = catalog.card(withID: id) ?? BuiltInIssuers.card(withID: id) { return card }
+    /// The issuers of `cards` in order, each with how many cards it has.
+    private static func issuerPicks(from cards: [TrackedCard]) -> [IssuerPick] {
+        var result: [IssuerPick] = []
+        for card in cards {
+            if let index = result.firstIndex(where: { $0.issuerID == card.issuer.id }) {
+                result[index].count += 1
+            } else {
+                result.append(IssuerPick(issuerID: card.issuer.id, count: 1))
+            }
+        }
+        return result
+    }
+
+    private func resolvedIssuer(withID id: String) -> Issuer? {
+        if let issuer = catalog.issuer(withID: id) ?? BuiltInIssuers.issuer(withID: id) { return issuer }
         return id.hasPrefix(Issuer.customIDPrefix) ? Issuer.custom(id: id) : nil
     }
 
@@ -177,10 +232,21 @@ final class OnboardingStore: ObservableObject {
         cards[index].details = details
     }
 
-    /// Sets the name of a not-listed card as the user types it. Catalog cards keep their names.
+    /// Sets the name of a not-listed bank as the user types it. Listed issuers keep their names.
     func setCustomName(_ name: String, for id: UUID) {
-        guard let index = cards.firstIndex(where: { $0.id == id }), cards[index].catalogCard.isCustom else { return }
-        cards[index].catalogCard = Issuer.custom(id: cards[index].catalogCard.id, name: name)
+        guard let index = cards.firstIndex(where: { $0.id == id }), cards[index].issuer.isCustom else { return }
+        cards[index].issuer = Issuer.custom(id: cards[index].issuer.id, name: name)
+    }
+
+    /// What to call a card on screen: its issuer's name, with a number when the user has several cards
+    /// from that issuer ("Chase 1", "Chase 2").
+    func title(of card: TrackedCard) -> String {
+        let name = card.issuer.displayName
+        let sameIssuer = cards.filter { $0.issuer.id == card.issuer.id }
+        guard sameIssuer.count > 1, let index = sameIssuer.firstIndex(where: { $0.id == card.id }) else {
+            return name
+        }
+        return "\(name) \(index + 1)"
     }
 
     /// Goes to the next card's form, or to the review screen after the last card.
@@ -207,7 +273,7 @@ final class OnboardingStore: ObservableObject {
     func removeCard(_ id: UUID) {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
         let removed = cards.remove(at: index)
-        selectedCatalogIDs.removeAll { $0 == removed.catalogCard.id }
+        removeOnePick(forIssuerID: removed.issuer.id)
 
         if cards.isEmpty {
             // Nothing left: back to picking cards.
@@ -238,6 +304,16 @@ final class OnboardingStore: ObservableObject {
             path.removeLast()
         default:
             break
+        }
+    }
+
+    /// One card fewer from this issuer; the issuer is unticked when that was its last card.
+    private func removeOnePick(forIssuerID issuerID: String) {
+        guard let index = picks.firstIndex(where: { $0.issuerID == issuerID }) else { return }
+        if picks[index].count > 1 {
+            picks[index].count -= 1
+        } else {
+            picks.remove(at: index)
         }
     }
 

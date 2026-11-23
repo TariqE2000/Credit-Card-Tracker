@@ -1,14 +1,15 @@
 import Combine
 import Foundation
 
-/// The cards the user can pick from, and the work of getting them.
+/// The issuers the user can pick from, and the work of getting them.
 ///
 /// How it behaves:
 /// 1. If a list is already saved on the phone, it is shown right away. When it came from the release
 ///    the app is pinned to (`IssuerCatalogSource.tag`), no download happens at all.
-/// 2. Otherwise the list is downloaded from the CDN, filtered to US cards, saved on the phone and shown.
-/// 3. If the download fails and nothing is saved, the built-in starter cards are shown with a "try
-///    again" option, so the user can still pick a card (or use "My card is not listed").
+/// 2. Otherwise the list is downloaded from the CDN, filtered to issuers with US cards, saved on the
+///    phone and shown.
+/// 3. If the download fails and nothing is saved, the built-in starter issuers are shown with a "try
+///    again" option, so the user can still pick an issuer (or use "My bank is not listed").
 @MainActor
 final class IssuerCatalogStore: ObservableObject {
     enum Phase: Equatable {
@@ -16,44 +17,44 @@ final class IssuerCatalogStore: ObservableObject {
         case loading
         /// The full list is showing.
         case ready
-        /// The download failed and nothing was saved, so the built-in starter cards are showing.
+        /// The download failed and nothing was saved, so the built-in starter issuers are showing.
         case unavailable
     }
 
-    @Published private(set) var cards: [Issuer]
+    @Published private(set) var issuers: [Issuer]
     @Published private(set) var phase: Phase
 
     private let tag: String
     private let cache: (any IssuerCatalogCaching)?
     private let fetcher: (any IssuerCatalogFetching)?
-    private let builtInCards: [Issuer]
+    private let builtInIssuers: [Issuer]
 
-    /// The release tag of the list that is showing. Nil while showing the built-in cards.
+    /// The release tag of the list that is showing. Nil while showing the built-in issuers.
     private var shownSource: String?
     private var index: [String: Issuer] = [:]
     private var loadTask: Task<Void, Never>?
 
-    /// Without a `fetcher` this store never downloads and just shows `builtInCards`.
+    /// Without a `fetcher` this store never downloads and just shows `builtInIssuers`.
     init(
         tag: String = IssuerCatalogSource.tag,
         cache: (any IssuerCatalogCaching)?,
         fetcher: (any IssuerCatalogFetching)?,
-        builtInCards: [Issuer] = BuiltInIssuers.all
+        builtInIssuers: [Issuer] = BuiltInIssuers.all
     ) {
         self.tag = tag
         self.cache = cache
         self.fetcher = fetcher
-        self.builtInCards = builtInCards
+        self.builtInIssuers = builtInIssuers
 
-        if let saved = cache?.load(), !saved.cards.isEmpty {
-            cards = saved.cards
+        if let saved = cache?.load(), !saved.issuers.isEmpty {
+            issuers = saved.issuers
             phase = .ready
             shownSource = saved.source
         } else if fetcher == nil {
-            cards = builtInCards
+            issuers = builtInIssuers
             phase = .ready
         } else {
-            cards = []
+            issuers = []
             phase = .loading
         }
         rebuildIndex()
@@ -64,20 +65,20 @@ final class IssuerCatalogStore: ObservableObject {
         IssuerCatalogStore(cache: FileIssuerCatalogCache(), fetcher: URLSessionCatalogFetcher())
     }
 
-    /// The built-in starter cards only, with no downloads and nothing saved. For previews and tests.
+    /// The built-in starter issuers only, with no downloads and nothing saved. For previews and tests.
     static func builtIn() -> IssuerCatalogStore {
         IssuerCatalogStore(cache: nil, fetcher: nil)
     }
 
-    // MARK: Looking cards up
+    // MARK: Looking issuers up
 
-    func card(withID id: String) -> Issuer? {
+    func issuer(withID id: String) -> Issuer? {
         index[id]
     }
 
-    /// Cards whose name or issuer contains `query`. An empty query returns the whole list.
-    func cards(matching query: String) -> [Issuer] {
-        BuiltInIssuers.search(cards, matching: query)
+    /// Issuers whose name contains `query`. An empty query returns the whole list.
+    func issuers(matching query: String) -> [Issuer] {
+        issuers.filter { $0.matches(query) }
     }
 
     // MARK: Loading
@@ -104,22 +105,23 @@ final class IssuerCatalogStore: ObservableObject {
     private func download() async {
         guard let fetcher else { return }
         do {
-            let data = try await fetcher.data(from: IssuerCatalogSource.url(forTag: tag))
-            // Reading 2 MB of JSON takes a moment, so it is done away from the main thread.
-            let fresh = try await Task.detached(priority: .userInitiated) {
-                try OpenCardMapper.catalogCards(from: data)
-            }.value
+            // The two files are small (about 15 KB and 22 KB) and are asked for at the same time.
+            let registryURL = IssuerCatalogSource.registryURL(forTag: tag)
+            let indexURL = IssuerCatalogSource.indexURL(forTag: tag)
+            async let registryData = fetcher.data(from: registryURL)
+            async let indexData = fetcher.data(from: indexURL)
+            let fresh = try OpenCardMapper.issuers(registryData: await registryData, indexData: await indexData)
 
-            cards = fresh
+            issuers = fresh
             rebuildIndex()
             phase = .ready
             shownSource = tag
-            cache?.save(CachedIssuers(source: tag, cards: fresh))
+            cache?.save(CachedIssuers(source: tag, issuers: fresh))
         } catch {
             // A list saved earlier (from an older release) stays on screen. With nothing saved,
-            // fall back to the built-in starter cards.
-            if cards.isEmpty {
-                cards = builtInCards
+            // fall back to the built-in starter issuers.
+            if issuers.isEmpty {
+                issuers = builtInIssuers
                 rebuildIndex()
                 phase = .unavailable
             }
@@ -127,6 +129,6 @@ final class IssuerCatalogStore: ObservableObject {
     }
 
     private func rebuildIndex() {
-        index = Dictionary(cards.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        index = Dictionary(issuers.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 }

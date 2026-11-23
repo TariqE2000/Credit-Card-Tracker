@@ -138,7 +138,7 @@ private struct CardFormContent: View {
             DueDatePickerSheet(digits: $dueDigits)
         }
         .confirmationDialog(
-            "Remove \(card.catalogCard.displayName)?",
+            "Remove \(store.title(of: card))?",
             isPresented: $showRemoveConfirmation,
             titleVisibility: .visible
         ) {
@@ -174,39 +174,35 @@ private struct CardFormContent: View {
 
     @ViewBuilder
     private var cardTitle: some View {
-        if card.catalogCard.isCustom {
+        if card.issuer.isCustom {
             notListedTitle
         } else {
             listedTitle
         }
     }
 
-    /// A card from the catalog: badge, name and issuer.
+    /// A card from a listed issuer: badge and the issuer's name. With several cards from the same issuer
+    /// the name is numbered ("Chase 2").
     private var listedTitle: some View {
         HStack(spacing: 14) {
-            CardBadge(card: card.catalogCard, size: 48)
+            CardBadge(issuer: card.issuer, size: 48)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(card.catalogCard.name)
-                    .font(.app(22, .bold))
-                    .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(card.catalogCard.issuer)
-                    .font(.app(14))
-                    .foregroundStyle(Theme.textSecondary)
-            }
+            Text(store.title(of: card))
+                .font(.app(22, .bold))
+                .foregroundStyle(Theme.textPrimary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    /// A card added with "My card is not listed": gray card icon and a field for the name.
-    /// Left empty, the card is called "Other card".
+    /// A card added with "My bank is not listed": gray card icon and a field for the bank's name.
+    /// Left empty, the bank is called "Other bank".
     private var notListedTitle: some View {
         HStack(spacing: 14) {
-            CardBadge(card: card.catalogCard, size: 48)
+            CardBadge(issuer: card.issuer, size: 48)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Card name")
+                Text("Bank name")
                     .font(.app(12))
                     .foregroundStyle(Theme.textSecondary)
 
@@ -222,17 +218,13 @@ private struct CardFormContent: View {
                     .submitLabel(.done)
                     .focused($focus, equals: .name)
                     .onSubmit { focus = nil }
-                    .accessibilityLabel("Card name")
+                    .accessibilityLabel("Bank name")
 
                     Image(systemName: "pencil")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Theme.textSecondary)
                         .accessibilityHidden(true)
                 }
-
-                Text(card.catalogCard.issuer)
-                    .font(.app(14))
-                    .foregroundStyle(Theme.textSecondary)
             }
         }
         .contentShape(Rectangle())
@@ -242,7 +234,7 @@ private struct CardFormContent: View {
     /// The name is saved as it is typed, so it is kept even if the user goes back.
     private var nameBinding: Binding<String> {
         Binding(
-            get: { card.catalogCard.name },
+            get: { card.issuer.name },
             set: { store.setCustomName($0, for: card.id) }
         )
     }
