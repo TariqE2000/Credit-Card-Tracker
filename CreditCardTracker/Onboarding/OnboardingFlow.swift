@@ -19,7 +19,7 @@ struct OnboardingFlow: View {
         case .logIn:
             LogInView()
         case .pickCards:
-            ComingSoonView(title: "Pick your cards")
+            PickCardsView()
         case .cardForm, .editCard:
             ComingSoonView(title: "Card form")
         case .review:
