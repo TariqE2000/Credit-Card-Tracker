@@ -11,8 +11,12 @@ struct ReviewView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                BackButton()
+                // No back button here: every card can be changed with Edit, so there is no way back
+                // to the forms. The space keeps the title where it is on the other screens.
+                Color.clear
+                    .frame(height: 44)
                     .padding(.top, 8)
+                    .accessibilityHidden(true)
 
                 Text("Review cards")
                     .font(.app(28, .bold))
@@ -46,6 +50,7 @@ struct ReviewView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
+        .swipeBackDisabled()
     }
 
     // MARK: Pieces
@@ -80,10 +85,24 @@ struct ReviewView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Button("Confirm and finish") {
-                store.finishOnboarding()
+            VStack(spacing: 12) {
+                Button("Confirm and finish") {
+                    store.finishOnboarding()
+                }
+                .buttonStyle(.primary)
+
+                // Back to "Pick your cards" with the current cards ticked, to add more.
+                Button {
+                    store.startAddingCards()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Add another card")
+                    }
+                }
+                .buttonStyle(.secondary)
             }
-            .buttonStyle(.primary)
         }
         .padding(.horizontal, Theme.Metrics.screenPadding)
         .padding(.top, 12)

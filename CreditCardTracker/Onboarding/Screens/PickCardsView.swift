@@ -1,7 +1,18 @@
 import SwiftUI
 
+/// Where "Pick your cards" was opened from.
+enum PickCardsMode {
+    /// Right after signing up.
+    case firstPick
+    /// From "Add another card" on the review screen. The cards the user already has are ticked and
+    /// cannot be changed; the user ticks new ones.
+    case addMore
+}
+
 /// "Pick your cards": search the catalog and tick every card the user wants to track.
 struct PickCardsView: View {
+    var mode: PickCardsMode = .firstPick
+
     @EnvironmentObject private var store: OnboardingStore
     @State private var query = ""
 
@@ -84,7 +95,11 @@ struct PickCardsView: View {
         ScrollView {
             LazyVStack(spacing: 10) {
                 ForEach(results) { card in
-                    CardPickRow(card: card, isSelected: store.isSelected(card)) {
+                    CardPickRow(
+                        card: card,
+                        isSelected: store.isSelected(card),
+                        isLocked: mode == .addMore && store.isLocked(card)
+                    ) {
                         store.toggleSelection(of: card)
                     }
                 }
@@ -114,10 +129,13 @@ struct PickCardsView: View {
             .buttonStyle(.textLink)
 
             Button(continueTitle) {
-                store.continueFromPickCards()
+                switch mode {
+                case .firstPick: store.continueFromPickCards()
+                case .addMore: store.continueFromAddCards()
+                }
             }
             .buttonStyle(.primary)
-            .disabled(store.selectedCount == 0)
+            .disabled(pickedCount == 0)
         }
         .padding(.horizontal, Theme.Metrics.screenPadding)
         .padding(.top, 14)
@@ -128,11 +146,21 @@ struct PickCardsView: View {
         }
     }
 
+    /// Cards picked on this screen. When adding more cards this counts only the new ones, because
+    /// those are the only ones that get a form.
+    private var pickedCount: Int {
+        switch mode {
+        case .firstPick: return store.selectedCount
+        case .addMore: return store.newPickCount
+        }
+    }
+
     private var continueTitle: String {
-        switch store.selectedCount {
+        let noun = mode == .addMore ? "new card" : "card"
+        switch pickedCount {
         case 0: return "Select a card to continue"
-        case 1: return "Continue with 1 card"
-        default: return "Continue with \(store.selectedCount) cards"
+        case 1: return "Continue with 1 \(noun)"
+        default: return "Continue with \(pickedCount) \(noun)s"
         }
     }
 }
@@ -151,6 +179,23 @@ struct PickCardsView: View {
     }
     .environmentObject(previewStore())
     .preferredColorScheme(.dark)
+}
+
+#Preview("Pick cards – adding more") {
+    NavigationStack {
+        PickCardsView(mode: .addMore)
+    }
+    .environmentObject(addingMoreStore())
+    .preferredColorScheme(.light)
+}
+
+/// Two cards already added, with the pick screen reopened from the review screen.
+@MainActor
+private func addingMoreStore() -> OnboardingStore {
+    let store = previewStore()
+    store.continueFromPickCards()
+    store.startAddingCards()
+    return store
 }
 
 /// A store with the first two cards already picked, like the design.

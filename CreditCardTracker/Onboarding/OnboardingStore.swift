@@ -14,6 +14,8 @@ enum OnboardingRoute: Hashable {
     /// The same form opened from the review screen. Saving goes back to the review screen.
     case editCard(UUID)
     case review
+    /// "Pick your cards" opened again from the review screen to add more cards.
+    case addCards
 }
 
 /// Holds everything the onboarding screens share: where the user is, which cards they picked,
@@ -28,6 +30,13 @@ final class OnboardingStore: ObservableObject {
     @Published private(set) var selectedCatalogIDs: [String] = []
     /// The picked cards with their details. Rebuilt each time the user continues from "Pick your cards".
     @Published private(set) var cards: [TrackedCard] = []
+
+    /// Catalog IDs of the cards the user already had when they tapped "Add another card". They show
+    /// as ticked and cannot be changed on the second pick screen.
+    @Published private(set) var lockedCatalogIDs: Set<String> = []
+    /// The cards added with "Add another card", in order. Only these get a form on the way back to
+    /// the review screen. Empty the rest of the time.
+    @Published private(set) var addBatch: [UUID] = []
 
     // MARK: Sign up and log in
 
@@ -72,6 +81,12 @@ final class OnboardingStore: ObservableObject {
     /// Builds `cards` from the picked catalog entries, keeping any details already typed for cards
     /// that are still picked, and opens the form for the first card.
     func continueFromPickCards() {
+        rebuildCards()
+        guard let first = cards.first else { return }
+        path.append(.cardForm(first.id))
+    }
+
+    private func rebuildCards() {
         let existing = Dictionary(
             cards.map { ($0.catalogCard.id, $0) },
             uniquingKeysWith: { first, _ in first }
@@ -80,8 +95,47 @@ final class OnboardingStore: ObservableObject {
             if let card = existing[id] { return card }
             return resolvedCard(withID: id).map { TrackedCard(catalogCard: $0) }
         }
-        guard let first = cards.first else { return }
-        path.append(.cardForm(first.id))
+    }
+
+    // MARK: Add another card (from the review screen)
+
+    /// "Add another card": opens "Pick your cards" again with the current cards already ticked.
+    func startAddingCards() {
+        selectedCatalogIDs = cards.map(\.catalogCard.id)
+        lockedCatalogIDs = Set(selectedCatalogIDs)
+        addBatch = []
+        path.append(.addCards)
+    }
+
+    /// True for a card the user already has. Only meaningful on the second pick screen.
+    func isLocked(_ card: CatalogCard) -> Bool {
+        lockedCatalogIDs.contains(card.id)
+    }
+
+    /// How many new cards are picked on the second pick screen.
+    var newPickCount: Int {
+        selectedCatalogIDs.filter { !lockedCatalogIDs.contains($0) }.count
+    }
+
+    /// Continue on the second pick screen: keeps every current card and its details, adds the new
+    /// ones, and opens the form for the first new card.
+    func continueFromAddCards() {
+        rebuildCards()
+        addBatch = cards
+            .filter { !lockedCatalogIDs.contains($0.catalogCard.id) }
+            .map(\.id)
+        guard let first = addBatch.first else { return }
+        path.append(.cardForm(first))
+    }
+
+    /// Back to the review screen that is already in the stack, closing the pick screen and the forms.
+    private func finishAdding() {
+        addBatch = []
+        if let reviewIndex = path.lastIndex(of: .review) {
+            path = Array(path.prefix(through: reviewIndex))
+        } else {
+            path.append(.review)
+        }
     }
 
     private func resolvedCard(withID id: String) -> CatalogCard? {
@@ -100,6 +154,16 @@ final class OnboardingStore: ObservableObject {
         cards.firstIndex { $0.id == id }.map { $0 + 1 }
     }
 
+    /// "Card 1 of 2" for a form. While adding more cards from the review screen it counts only the
+    /// new cards; otherwise it counts every card.
+    func progress(for id: UUID) -> (position: Int, total: Int) {
+        if let index = addBatch.firstIndex(of: id) {
+            return (index + 1, addBatch.count)
+        }
+        let index = cards.firstIndex { $0.id == id } ?? 0
+        return (index + 1, max(cards.count, 1))
+    }
+
     func saveDetails(_ details: CardDetails, for id: UUID) {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
         cards[index].details = details
@@ -113,6 +177,16 @@ final class OnboardingStore: ObservableObject {
 
     /// Goes to the next card's form, or to the review screen after the last card.
     func advance(from id: UUID) {
+        // Adding more cards: step through the new cards only, then return to the review screen.
+        if let batchIndex = addBatch.firstIndex(of: id) {
+            if batchIndex + 1 < addBatch.count {
+                path.append(.cardForm(addBatch[batchIndex + 1]))
+            } else {
+                finishAdding()
+            }
+            return
+        }
+
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
         if index + 1 < cards.count {
             path.append(.cardForm(cards[index + 1].id))
@@ -129,7 +203,21 @@ final class OnboardingStore: ObservableObject {
 
         if cards.isEmpty {
             // Nothing left: back to picking cards.
+            addBatch = []
             path = [.pickCards]
+            return
+        }
+
+        if let batchIndex = addBatch.firstIndex(of: id) {
+            // Removing one of the cards being added: on to the next new card, or back to the review screen.
+            addBatch.remove(at: batchIndex)
+            if case .cardForm(id) = path.last {
+                if batchIndex < addBatch.count {
+                    path[path.count - 1] = .cardForm(addBatch[batchIndex])
+                } else {
+                    finishAdding()
+                }
+            }
             return
         }
 

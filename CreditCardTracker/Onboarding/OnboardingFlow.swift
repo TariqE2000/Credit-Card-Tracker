@@ -20,6 +20,8 @@ struct OnboardingFlow: View {
             LogInView()
         case .pickCards:
             PickCardsView()
+        case .addCards:
+            PickCardsView(mode: .addMore)
         case .cardForm(let id):
             CardFormView(cardID: id)
         case .editCard(let id):

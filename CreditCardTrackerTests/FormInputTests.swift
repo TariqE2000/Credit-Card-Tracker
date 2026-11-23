@@ -4,6 +4,13 @@ import XCTest
 final class FormInputTests: XCTestCase {
     private let us = Locale(identifier: "en_US")
 
+    func testBlankFields() {
+        XCTAssertTrue(FormInput.isBlank(""))
+        XCTAssertTrue(FormInput.isBlank("   "))
+        XCTAssertFalse(FormInput.isBlank("0"))
+        XCTAssertFalse(FormInput.isBlank(" 45 "))
+    }
+
     func testReadsAmounts() {
         XCTAssertEqual(FormInput.decimal(from: "2480.15", locale: us), Decimal(string: "2480.15", locale: us))
         XCTAssertEqual(FormInput.decimal(from: "2,480.15", locale: us), Decimal(string: "2480.15", locale: us))
