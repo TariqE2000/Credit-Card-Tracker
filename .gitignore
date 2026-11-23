@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# XcodeGen generates this from project.yml
+*.xcodeproj
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Packages/
+
+# Secrets (Supabase keys, Google client IDs, etc.)
+Secrets.xcconfig
+*.env
