@@ -24,10 +24,8 @@ final class OnboardingStore: ObservableObject {
     @Published private(set) var isSignedIn = false
     @Published private(set) var hasFinishedOnboarding = false
 
-    /// Catalog IDs in the order the user tapped them. Custom cards are in here too.
+    /// Catalog IDs in the order the user tapped them. Cards added with "My card is not listed" are in here too.
     @Published private(set) var selectedCatalogIDs: [String] = []
-    /// Cards the user added with "My card is not listed". Always picked.
-    @Published private(set) var customCards: [CatalogCard] = []
     /// The picked cards with their details. Rebuilt each time the user continues from "Pick your cards".
     @Published private(set) var cards: [TrackedCard] = []
 
@@ -64,60 +62,31 @@ final class OnboardingStore: ObservableObject {
         }
     }
 
-    // MARK: Custom cards
+    // MARK: Cards that are not listed
 
-    /// "My card is not listed": adds a picked card with no name yet, for the user to name.
-    @discardableResult
-    func addCustomCard() -> CatalogCard {
-        let card = CatalogCard.custom(name: "")
-        customCards.append(card)
-        selectedCatalogIDs.append(card.id)
-        return card
-    }
-
-    func renameCustomCard(_ id: String, to name: String) {
-        guard let index = customCards.firstIndex(where: { $0.id == id }) else { return }
-        customCards[index] = CatalogCard.custom(id: id, name: name)
-    }
-
-    func removeCustomCard(_ id: String) {
-        customCards.removeAll { $0.id == id }
-        selectedCatalogIDs.removeAll { $0 == id }
-    }
-
-    /// True while a custom card has no name. The user has to name it before continuing.
-    var hasUnnamedCustomCard: Bool {
-        customCards.contains { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-    }
-
-    var canContinueFromPickCards: Bool {
-        selectedCount > 0 && !hasUnnamedCustomCard
-    }
-
-    /// The catalog card or custom card for an ID. Custom card names are tidied of extra spaces.
-    private func resolvedCard(withID id: String) -> CatalogCard? {
-        if let card = CardCatalog.card(withID: id) { return card }
-        guard let custom = customCards.first(where: { $0.id == id }) else { return nil }
-        return CatalogCard.custom(id: id, name: custom.name.trimmingCharacters(in: .whitespacesAndNewlines))
+    /// "My card is not listed": adds one more picked card. Its name is typed on its card form.
+    func addNotListedCard() {
+        selectedCatalogIDs.append(CatalogCard.customIDPrefix + UUID().uuidString)
     }
 
     /// Builds `cards` from the picked catalog entries, keeping any details already typed for cards
     /// that are still picked, and opens the form for the first card.
     func continueFromPickCards() {
-        guard !hasUnnamedCustomCard else { return }
-
         let existing = Dictionary(
             cards.map { ($0.catalogCard.id, $0) },
             uniquingKeysWith: { first, _ in first }
         )
         cards = selectedCatalogIDs.compactMap { id -> TrackedCard? in
-            guard let catalogCard = resolvedCard(withID: id) else { return nil }
-            guard let old = existing[id] else { return TrackedCard(catalogCard: catalogCard) }
-            // Keep what was typed, but pick up a custom card that was renamed in the meantime.
-            return TrackedCard(id: old.id, catalogCard: catalogCard, details: old.details)
+            if let card = existing[id] { return card }
+            return resolvedCard(withID: id).map { TrackedCard(catalogCard: $0) }
         }
         guard let first = cards.first else { return }
         path.append(.cardForm(first.id))
+    }
+
+    private func resolvedCard(withID id: String) -> CatalogCard? {
+        if let card = CardCatalog.card(withID: id) { return card }
+        return id.hasPrefix(CatalogCard.customIDPrefix) ? CatalogCard.custom(id: id) : nil
     }
 
     // MARK: Card form
@@ -136,6 +105,12 @@ final class OnboardingStore: ObservableObject {
         cards[index].details = details
     }
 
+    /// Sets the name of a not-listed card as the user types it. Catalog cards keep their names.
+    func setCustomName(_ name: String, for id: UUID) {
+        guard let index = cards.firstIndex(where: { $0.id == id }), cards[index].catalogCard.isCustom else { return }
+        cards[index].catalogCard = CatalogCard.custom(id: cards[index].catalogCard.id, name: name)
+    }
+
     /// Goes to the next card's form, or to the review screen after the last card.
     func advance(from id: UUID) {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
@@ -151,7 +126,6 @@ final class OnboardingStore: ObservableObject {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
         let removed = cards.remove(at: index)
         selectedCatalogIDs.removeAll { $0 == removed.catalogCard.id }
-        customCards.removeAll { $0.id == removed.catalogCard.id }
 
         if cards.isEmpty {
             // Nothing left: back to picking cards.

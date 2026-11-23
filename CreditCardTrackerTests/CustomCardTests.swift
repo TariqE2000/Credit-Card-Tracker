@@ -1,115 +1,133 @@
 import XCTest
 @testable import CreditCardTracker
 
-final class CustomCardModelTests: XCTestCase {
-    func testInitials() {
-        XCTAssertEqual(CatalogCard.initials(for: ""), "?")
-        XCTAssertEqual(CatalogCard.initials(for: "   "), "?")
-        XCTAssertEqual(CatalogCard.initials(for: "Costco"), "CO")
-        XCTAssertEqual(CatalogCard.initials(for: "Navy Federal Visa"), "NF")
-        XCTAssertEqual(CatalogCard.initials(for: "x"), "X")
-    }
-
-    func testCustomCardsAreMarkedCustom() {
-        XCTAssertTrue(CatalogCard.custom(name: "My Bank").isCustom)
+final class NotListedCardModelTests: XCTestCase {
+    func testNotListedCardsAreMarkedCustom() {
+        XCTAssertTrue(CatalogCard.custom().isCustom)
         XCTAssertFalse(CardCatalog.all[0].isCustom)
+        XCTAssertEqual(CatalogCard.custom().issuer, "Not listed")
     }
 
-    func testEachCustomCardGetsItsOwnID() {
-        XCTAssertNotEqual(CatalogCard.custom(name: "").id, CatalogCard.custom(name: "").id)
+    func testEachNotListedCardGetsItsOwnID() {
+        XCTAssertNotEqual(CatalogCard.custom().id, CatalogCard.custom().id)
+    }
+
+    func testUnnamedCardIsCalledOtherCard() {
+        XCTAssertEqual(CatalogCard.custom().displayName, "Other card")
+        XCTAssertEqual(CatalogCard.custom(name: "   ").displayName, "Other card")
+    }
+
+    func testNamedCardShowsItsTrimmedName() {
+        XCTAssertEqual(CatalogCard.custom(name: "  Navy Federal ").displayName, "Navy Federal")
+    }
+
+    func testCatalogCardsKeepTheirNames() {
+        XCTAssertEqual(CardCatalog.all[0].displayName, CardCatalog.all[0].name)
     }
 }
 
 @MainActor
-final class CustomCardStoreTests: XCTestCase {
-    func testAddingACustomCardCountsAsPicked() {
+final class NotListedCardStoreTests: XCTestCase {
+    private func card(_ id: String) throws -> CatalogCard {
+        try XCTUnwrap(CardCatalog.card(withID: id))
+    }
+
+    func testTappingNotListedIncreasesTheCount() throws {
         let store = OnboardingStore()
-        store.toggleSelection(of: CardCatalog.all[0])
-
-        let card = store.addCustomCard()
-
+        store.toggleSelection(of: try card("chase-freedom-unlimited"))
+        store.toggleSelection(of: try card("chase-sapphire-preferred"))
         XCTAssertEqual(store.selectedCount, 2)
-        XCTAssertTrue(store.isSelected(card))
-        XCTAssertEqual(store.customCards.count, 1)
-        XCTAssertEqual(card.name, "")
-        XCTAssertEqual(card.badgeCode, "?")
+
+        store.addNotListedCard()
+        XCTAssertEqual(store.selectedCount, 3)
+
+        store.addNotListedCard()
+        XCTAssertEqual(store.selectedCount, 4)
     }
 
-    func testCustomCardMustBeNamedBeforeContinuing() {
+    func testContinueShowsTheNotListedCardsInTheOrderTheyWerePicked() throws {
         let store = OnboardingStore()
         store.signIn(with: .apple)
-        let card = store.addCustomCard()
-
-        XCTAssertTrue(store.hasUnnamedCustomCard)
-        XCTAssertFalse(store.canContinueFromPickCards)
-        store.continueFromPickCards()
-        XCTAssertEqual(store.path, [.pickCards])
-        XCTAssertTrue(store.cards.isEmpty)
-
-        store.renameCustomCard(card.id, to: "   ")
-        XCTAssertTrue(store.hasUnnamedCustomCard)
-
-        store.renameCustomCard(card.id, to: "Navy Federal")
-        XCTAssertFalse(store.hasUnnamedCustomCard)
-        XCTAssertTrue(store.canContinueFromPickCards)
-        XCTAssertEqual(store.customCards.first?.badgeCode, "NF")
-    }
-
-    func testContinueUsesTheTrimmedName() {
-        let store = OnboardingStore()
-        store.signIn(with: .apple)
-        let card = store.addCustomCard()
-        store.renameCustomCard(card.id, to: "  Navy Federal  ")
+        store.toggleSelection(of: try card("chase-freedom-unlimited"))
+        store.addNotListedCard()
+        store.toggleSelection(of: try card("apple-card"))
 
         store.continueFromPickCards()
 
-        XCTAssertEqual(store.cards.count, 1)
-        XCTAssertEqual(store.cards[0].catalogCard.name, "Navy Federal")
-        XCTAssertEqual(store.cards[0].catalogCard.issuer, "Custom card")
-        XCTAssertEqual(store.path.last, .cardForm(store.cards[0].id))
+        XCTAssertEqual(store.cards.count, 3)
+        XCTAssertFalse(store.cards[0].catalogCard.isCustom)
+        XCTAssertTrue(store.cards[1].catalogCard.isCustom)
+        XCTAssertEqual(store.cards[1].catalogCard.displayName, "Other card")
+        XCTAssertFalse(store.cards[2].catalogCard.isCustom)
     }
 
-    func testRenamingAfterContinuingKeepsDetails() {
+    func testTwoNotListedCardsAreSeparateCards() {
         let store = OnboardingStore()
         store.signIn(with: .apple)
-        let card = store.addCustomCard()
-        store.renameCustomCard(card.id, to: "Credit Union")
+        store.addNotListedCard()
+        store.addNotListedCard()
+
         store.continueFromPickCards()
 
+        XCTAssertEqual(store.cards.count, 2)
+        XCTAssertNotEqual(store.cards[0].catalogCard.id, store.cards[1].catalogCard.id)
+    }
+
+    func testTypingANameSetsTheCardName() {
+        let store = OnboardingStore()
+        store.signIn(with: .apple)
+        store.addNotListedCard()
+        store.continueFromPickCards()
+        let id = store.cards[0].id
+
+        store.setCustomName("Navy Federal", for: id)
+
+        XCTAssertEqual(store.card(withID: id)?.catalogCard.displayName, "Navy Federal")
+        XCTAssertEqual(store.card(withID: id)?.catalogCard.issuer, "Not listed")
+    }
+
+    func testNameAndDetailsSurviveGoingBackAndContinuingAgain() throws {
+        let store = OnboardingStore()
+        store.signIn(with: .apple)
+        store.addNotListedCard()
+        store.continueFromPickCards()
         let id = store.cards[0].id
         let details = CardDetails(balance: 100, minimumPayment: 25, dueDate: DueDate(month: 3, day: 9))
+        store.setCustomName("Credit Union", for: id)
         store.saveDetails(details, for: id)
 
-        store.renameCustomCard(card.id, to: "Credit Union Visa")
+        // Back on "Pick your cards", the user taps another card and continues.
+        store.toggleSelection(of: try card("apple-card"))
         store.continueFromPickCards()
 
-        XCTAssertEqual(store.cards.count, 1)
+        XCTAssertEqual(store.cards.count, 2)
         XCTAssertEqual(store.cards[0].id, id)
-        XCTAssertEqual(store.cards[0].catalogCard.name, "Credit Union Visa")
+        XCTAssertEqual(store.cards[0].catalogCard.displayName, "Credit Union")
         XCTAssertEqual(store.cards[0].details, details)
     }
 
-    func testRemovingACustomCardFromTheList() {
+    func testCatalogCardNamesCannotBeChanged() throws {
         let store = OnboardingStore()
-        let card = store.addCustomCard()
+        store.toggleSelection(of: try card("apple-card"))
+        store.signIn(with: .apple)
+        store.continueFromPickCards()
+        let id = store.cards[0].id
 
-        store.removeCustomCard(card.id)
+        store.setCustomName("Something else", for: id)
 
-        XCTAssertEqual(store.selectedCount, 0)
-        XCTAssertTrue(store.customCards.isEmpty)
+        XCTAssertEqual(store.cards[0].catalogCard.name, "Apple Card")
     }
 
-    func testRemovingACustomCardFromItsFormForgetsIt() {
+    func testRemovingANotListedCardLowersTheCount() throws {
         let store = OnboardingStore()
         store.signIn(with: .apple)
-        let card = store.addCustomCard()
-        store.renameCustomCard(card.id, to: "Credit Union")
-        store.toggleSelection(of: CardCatalog.all[0])
+        store.toggleSelection(of: try card("apple-card"))
+        store.addNotListedCard()
         store.continueFromPickCards()
+        XCTAssertEqual(store.selectedCount, 2)
 
-        store.removeCard(store.cards[0].id)
+        store.removeCard(store.cards[1].id)
 
-        XCTAssertTrue(store.customCards.isEmpty)
         XCTAssertEqual(store.selectedCount, 1)
         XCTAssertEqual(store.cards.count, 1)
     }

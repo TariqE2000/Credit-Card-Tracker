@@ -4,8 +4,6 @@ import SwiftUI
 struct PickCardsView: View {
     @EnvironmentObject private var store: OnboardingStore
     @State private var query = ""
-    /// Which custom card's name field has the keyboard.
-    @FocusState private var focusedCustomCardID: String?
 
     private var results: [CatalogCard] {
         CardCatalog.cards(matching: query)
@@ -83,80 +81,43 @@ struct PickCardsView: View {
     }
 
     private var cardList: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 10) {
-                    ForEach(results) { card in
-                        CardPickRow(card: card, isSelected: store.isSelected(card)) {
-                            store.toggleSelection(of: card)
-                        }
-                    }
-
-                    if results.isEmpty {
-                        Text("No cards match “\(query)”.")
-                            .font(.app(15))
-                            .foregroundStyle(Theme.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 20)
-                    }
-
-                    // Cards added with "My card is not listed" always show, below the catalog.
-                    ForEach(store.customCards) { card in
-                        CustomCardRow(
-                            card: card,
-                            name: nameBinding(for: card),
-                            focus: $focusedCustomCardID
-                        ) {
-                            store.removeCustomCard(card.id)
-                        }
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                ForEach(results) { card in
+                    CardPickRow(card: card, isSelected: store.isSelected(card)) {
+                        store.toggleSelection(of: card)
                     }
                 }
-                .padding(.horizontal, Theme.Metrics.screenPadding)
-                .padding(.vertical, 4)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .onChange(of: store.customCards.count) { oldCount, newCount in
-                // A card was just added: scroll to it and start typing its name.
-                guard newCount > oldCount, let newCard = store.customCards.last else { return }
-                DispatchQueue.main.async {
-                    withAnimation {
-                        proxy.scrollTo(newCard.id, anchor: .bottom)
-                    }
-                    focusedCustomCardID = newCard.id
+
+                if results.isEmpty {
+                    Text("No cards match “\(query)”.")
+                        .font(.app(15))
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 32)
                 }
             }
+            .padding(.horizontal, Theme.Metrics.screenPadding)
+            .padding(.vertical, 4)
         }
-    }
-
-    private func nameBinding(for card: CatalogCard) -> Binding<String> {
-        Binding(
-            get: { store.customCards.first { $0.id == card.id }?.name ?? "" },
-            set: { store.renameCustomCard(card.id, to: $0) }
-        )
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var bottomBar: some View {
         VStack(spacing: 14) {
-            if store.hasUnnamedCustomCard {
-                Text("Give your custom card a name to continue.")
-                    .font(.app(13))
-                    .foregroundStyle(Theme.textSecondary)
-            }
-
             Button("My card is not listed") {
-                // Clear the search so the new card is easy to find at the bottom of the list.
-                query = ""
-                store.addCustomCard()
+                // Adds one more card to the count. Its name is typed on its card form.
+                store.addNotListedCard()
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
             }
             .buttonStyle(.textLink)
 
             Button(continueTitle) {
-                focusedCustomCardID = nil
                 store.continueFromPickCards()
             }
             .buttonStyle(.primary)
-            .disabled(!store.canContinueFromPickCards)
+            .disabled(store.selectedCount == 0)
         }
         .padding(.horizontal, Theme.Metrics.screenPadding)
         .padding(.top, 14)

@@ -54,7 +54,8 @@ struct CardDetails: Hashable {
 /// A card the user picked, together with whatever details they entered.
 struct TrackedCard: Identifiable, Hashable {
     let id: UUID
-    let catalogCard: CatalogCard
+    /// Changes only for a not-listed card, when the user types its name.
+    var catalogCard: CatalogCard
     var details: CardDetails
 
     init(id: UUID = UUID(), catalogCard: CatalogCard, details: CardDetails = CardDetails()) {

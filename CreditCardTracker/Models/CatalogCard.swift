@@ -15,39 +15,27 @@ struct CatalogCard: Identifiable, Hashable {
     let badgeColorHex: UInt32
 }
 
-// MARK: - Custom cards
+// MARK: - Cards that are not listed
 
-/// A card the user adds by name because it is not in the catalog ("My card is not listed").
+/// A card the user added with "My card is not listed". The user types its name on the card form.
 extension CatalogCard {
     static let customIDPrefix = "custom-"
+    /// What an unnamed not-listed card is called.
+    static let defaultCustomName = "Other card"
 
     var isCustom: Bool { id.hasPrefix(Self.customIDPrefix) }
 
-    /// A custom card. The badge shows the initials of the name, or "?" while there is no name yet.
     static func custom(
         id: String = CatalogCard.customIDPrefix + UUID().uuidString,
-        name: String
+        name: String = ""
     ) -> CatalogCard {
-        CatalogCard(
-            id: id,
-            name: name,
-            issuer: "Custom card",
-            badgeCode: initials(for: name),
-            badgeColorHex: 0x5B4CF0
-        )
+        CatalogCard(id: id, name: name, issuer: "Not listed", badgeCode: "", badgeColorHex: 0x6B6B78)
     }
 
-    /// "Navy Federal" gives "NF", "Costco" gives "CO", and no name gives "?".
-    static func initials(for name: String) -> String {
-        let words = name.split(whereSeparator: \.isWhitespace)
-        let letters: [Character]
-        if words.count >= 2 {
-            letters = words.prefix(2).compactMap(\.first)
-        } else if let word = words.first {
-            letters = Array(word.prefix(2))
-        } else {
-            return "?"
-        }
-        return String(letters).uppercased()
+    /// The name to show. A not-listed card left unnamed is shown as "Other card".
+    var displayName: String {
+        guard isCustom else { return name }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? Self.defaultCustomName : trimmed
     }
 }

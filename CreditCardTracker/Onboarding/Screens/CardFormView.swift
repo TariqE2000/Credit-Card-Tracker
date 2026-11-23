@@ -47,7 +47,7 @@ private struct CardFormContent: View {
     @FocusState private var focus: Field?
 
     private enum Field: Hashable {
-        case balance, minimum, due, apr
+        case name, balance, minimum, due, apr
     }
 
     init(card: TrackedCard, mode: CardFormMode, position: Int, total: Int) {
@@ -104,7 +104,7 @@ private struct CardFormContent: View {
             }
         }
         .confirmationDialog(
-            "Remove \(card.catalogCard.name)?",
+            "Remove \(card.catalogCard.displayName)?",
             isPresented: $showRemoveConfirmation,
             titleVisibility: .visible
         ) {
@@ -138,7 +138,17 @@ private struct CardFormContent: View {
         }
     }
 
+    @ViewBuilder
     private var cardTitle: some View {
+        if card.catalogCard.isCustom {
+            notListedTitle
+        } else {
+            listedTitle
+        }
+    }
+
+    /// A card from the catalog: badge, name and issuer.
+    private var listedTitle: some View {
         HStack(spacing: 14) {
             CardBadge(card: card.catalogCard, size: 48)
 
@@ -148,11 +158,59 @@ private struct CardFormContent: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(card.catalogCard.issuer) · Every field is optional")
+                Text(card.catalogCard.issuer)
                     .font(.app(14))
                     .foregroundStyle(Theme.textSecondary)
             }
         }
+    }
+
+    /// A card added with "My card is not listed": gray card icon and a field for the name.
+    /// Left empty, the card is called "Other card".
+    private var notListedTitle: some View {
+        HStack(spacing: 14) {
+            CardBadge(card: card.catalogCard, size: 48)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Card name")
+                    .font(.app(12))
+                    .foregroundStyle(Theme.textSecondary)
+
+                HStack(spacing: 8) {
+                    TextField(
+                        "",
+                        text: nameBinding,
+                        prompt: Text(CatalogCard.defaultCustomName).foregroundStyle(Theme.textSecondary)
+                    )
+                    .font(.app(22, .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.done)
+                    .focused($focus, equals: .name)
+                    .onSubmit { focus = nil }
+                    .accessibilityLabel("Card name")
+
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                        .accessibilityHidden(true)
+                }
+
+                Text(card.catalogCard.issuer)
+                    .font(.app(14))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { focus = .name }
+    }
+
+    /// The name is saved as it is typed, so it is kept even if the user goes back.
+    private var nameBinding: Binding<String> {
+        Binding(
+            get: { card.catalogCard.name },
+            set: { store.setCustomName($0, for: card.id) }
+        )
     }
 
     private var fields: some View {
