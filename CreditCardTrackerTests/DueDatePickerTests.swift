@@ -1,7 +1,7 @@
 import XCTest
 @testable import CreditCardTracker
 
-final class DueDateTests: XCTestCase {
+final class DueDatePickerTests: XCTestCase {
     private let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
