@@ -8,7 +8,7 @@ struct CardBadge: View {
     var size: CGFloat = 40
     /// Gray version used for a card that has no details yet.
     var isMuted = false
-    /// An SF Symbol shown instead of the letters, on a gray badge (used for cards that are not listed).
+    /// An SF Symbol shown instead of the letters, on a gray badge (used for banks that are not listed).
     var systemImage: String?
     /// The issuer's logo. Not shown on the gray badge of a card with no details.
     var logoURL: URL?
@@ -59,14 +59,14 @@ struct CardBadge: View {
 }
 
 extension CardBadge {
-    init(card: CatalogCard, size: CGFloat = 40, isMuted: Bool = false) {
+    init(issuer: Issuer, size: CGFloat = 40, isMuted: Bool = false) {
         self.init(
-            code: card.badgeCode,
-            color: Color(hex: card.badgeColorHex),
+            code: issuer.badgeCode,
+            color: Color(hex: issuer.badgeColorHex),
             size: size,
             isMuted: isMuted,
-            systemImage: card.isCustom ? "creditcard" : nil,
-            logoURL: isMuted ? nil : card.logoURL
+            systemImage: issuer.isCustom ? "creditcard" : nil,
+            logoURL: isMuted ? nil : issuer.logoURL
         )
     }
 }

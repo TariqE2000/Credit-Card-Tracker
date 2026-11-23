@@ -4,26 +4,27 @@ import SwiftUI
 enum PickCardsMode {
     /// Right after signing up.
     case firstPick
-    /// From "Add another card" on the review screen. The cards the user already has are ticked and
-    /// cannot be changed; the user ticks new ones.
+    /// From "Add another card" on the review screen. The issuers the user already has cards from are
+    /// ticked and cannot be unticked, but the counter can go up; the user ticks new issuers too.
     case addMore
 }
 
-/// "Pick your cards": search the catalog and tick every card the user wants to track.
+/// "Pick your cards": search the issuers and tick every bank the user has a card from, setting how many
+/// cards each one has.
 struct PickCardsView: View {
     var mode: PickCardsMode = .firstPick
 
     @EnvironmentObject private var store: OnboardingStore
-    @EnvironmentObject private var catalog: CardCatalogStore
+    @EnvironmentObject private var catalog: IssuerCatalogStore
     @State private var query = ""
     @State private var isRetrying = false
 
-    private var results: [CatalogCard] {
-        catalog.cards(matching: query)
+    private var results: [Issuer] {
+        catalog.issuers(matching: query)
     }
 
     private var isLoadingFirstList: Bool {
-        catalog.phase == .loading && catalog.cards.isEmpty
+        catalog.phase == .loading && catalog.issuers.isEmpty
     }
 
     var body: some View {
@@ -32,12 +33,12 @@ struct PickCardsView: View {
                 BackButton()
                     .padding(.top, 8)
 
-                Text("Pick your cards")
+                Text("Who issued your cards?")
                     .font(.app(28, .bold))
                     .foregroundStyle(Theme.textPrimary)
                     .padding(.top, 12)
 
-                Text("Choose every credit card you want to keep track of. You can add more later.")
+                Text("Pick each bank you have a credit card from. If you have two or more from the same bank, tap + to add them. You can add more later.")
                     .font(.app(15))
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -71,7 +72,7 @@ struct PickCardsView: View {
             TextField(
                 "",
                 text: $query,
-                prompt: Text("Search by card or bank").foregroundStyle(Theme.textSecondary)
+                prompt: Text("Search for a bank").foregroundStyle(Theme.textSecondary)
             )
             .font(.app(16))
             .foregroundStyle(Theme.textPrimary)
@@ -108,18 +109,21 @@ struct PickCardsView: View {
                     loadingNotice
                 }
 
-                ForEach(results) { card in
-                    CardPickRow(
-                        card: card,
-                        isSelected: store.isSelected(card),
-                        isLocked: mode == .addMore && store.isLocked(card)
-                    ) {
-                        store.toggleSelection(of: card)
-                    }
+                ForEach(results) { issuer in
+                    // Cards already added only count as locked on the second pick screen.
+                    let lockedCount = mode == .addMore ? store.lockedCount(of: issuer) : 0
+                    IssuerPickRow(
+                        issuer: issuer,
+                        count: store.count(of: issuer),
+                        lockedCount: lockedCount,
+                        onToggle: { store.toggleSelection(of: issuer) },
+                        onIncrease: { store.increaseCount(of: issuer) },
+                        onDecrease: { store.decreaseCount(of: issuer, minimum: lockedCount) }
+                    )
                 }
 
                 if results.isEmpty && !isLoadingFirstList {
-                    Text("No cards match “\(query)”.")
+                    Text("No banks match “\(query)”.")
                         .font(.app(15))
                         .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -127,7 +131,7 @@ struct PickCardsView: View {
                         .padding(.top, 32)
                 }
 
-                if catalog.phase == .ready && !catalog.cards.isEmpty {
+                if catalog.phase == .ready && !catalog.issuers.isEmpty {
                     creditLine
                 }
             }
@@ -141,7 +145,7 @@ struct PickCardsView: View {
     private var loadingNotice: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text("Loading cards…")
+            Text("Loading banks…")
                 .font(.app(15))
                 .foregroundStyle(Theme.textSecondary)
         }
@@ -150,10 +154,10 @@ struct PickCardsView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The download failed and nothing was saved, so only the built-in starter cards are showing.
+    /// The download failed and nothing was saved, so only the built-in starter issuers are showing.
     private var unavailableNotice: some View {
         HStack(spacing: 12) {
-            Text("Couldn't load the full card list. Showing popular cards.")
+            Text("Couldn't load the full list of banks. Showing popular ones.")
                 .font(.app(13))
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -186,8 +190,8 @@ struct PickCardsView: View {
 
     /// The credit that opencard-db's license (CC BY 4.0) asks for.
     private var creditLine: some View {
-        Link(destination: CardCatalogSource.repositoryURL) {
-            Text("Card list from opencard-db (CC BY 4.0)")
+        Link(destination: IssuerCatalogSource.repositoryURL) {
+            Text("Bank list from opencard-db (CC BY 4.0)")
                 .font(.app(12))
                 .foregroundStyle(Theme.textSecondary)
                 .underline()
@@ -198,8 +202,8 @@ struct PickCardsView: View {
 
     private var bottomBar: some View {
         VStack(spacing: 14) {
-            Button("My card is not listed") {
-                // Adds one more card to the count. Its name is typed on its card form.
+            Button("My bank is not listed") {
+                // Adds one more card to the count. The bank's name is typed on its card form.
                 store.addNotListedCard()
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             }
@@ -235,7 +239,7 @@ struct PickCardsView: View {
     private var continueTitle: String {
         let noun = mode == .addMore ? "new card" : "card"
         switch pickedCount {
-        case 0: return "Select a card to continue"
+        case 0: return "Select a bank to continue"
         case 1: return "Continue with 1 \(noun)"
         default: return "Continue with \(pickedCount) \(noun)s"
         }
@@ -247,7 +251,7 @@ struct PickCardsView: View {
         PickCardsView()
     }
     .environmentObject(previewStore())
-    .environmentObject(CardCatalogStore.builtIn())
+    .environmentObject(IssuerCatalogStore.builtIn())
     .preferredColorScheme(.light)
 }
 
@@ -256,7 +260,7 @@ struct PickCardsView: View {
         PickCardsView()
     }
     .environmentObject(previewStore())
-    .environmentObject(CardCatalogStore.builtIn())
+    .environmentObject(IssuerCatalogStore.builtIn())
     .preferredColorScheme(.dark)
 }
 
@@ -265,11 +269,12 @@ struct PickCardsView: View {
         PickCardsView(mode: .addMore)
     }
     .environmentObject(addingMoreStore())
-    .environmentObject(CardCatalogStore.builtIn())
+    .environmentObject(IssuerCatalogStore.builtIn())
     .preferredColorScheme(.light)
 }
 
-/// Two cards already added, with the pick screen reopened from the review screen.
+/// Three cards already added (two Chase, one American Express), with the pick screen reopened from the
+/// review screen.
 @MainActor
 private func addingMoreStore() -> OnboardingStore {
     let store = previewStore()
@@ -278,11 +283,12 @@ private func addingMoreStore() -> OnboardingStore {
     return store
 }
 
-/// A store with the first two cards already picked, like the design.
+/// A store with Chase (two cards) and American Express picked.
 @MainActor
 private func previewStore() -> OnboardingStore {
     let store = OnboardingStore()
-    store.toggleSelection(of: CardCatalog.all[0])
-    store.toggleSelection(of: CardCatalog.all[1])
+    store.toggleSelection(of: BuiltInIssuers.all[0])
+    store.increaseCount(of: BuiltInIssuers.all[0])
+    store.toggleSelection(of: BuiltInIssuers.all[1])
     return store
 }

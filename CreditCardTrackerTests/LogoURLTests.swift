@@ -8,26 +8,26 @@ final class LogoURLTests: XCTestCase {
     }
 
     func testListedIssuersHaveALogoURL() throws {
-        let card = try XCTUnwrap(CardCatalog.card(withID: "us-capital-one-quicksilver"))
-        XCTAssertEqual(card.logoURL?.host, "logoapi.sh")
-        XCTAssertEqual(card.logoURL?.path, "/icon/capitalone.com.png")
+        let issuer = try XCTUnwrap(BuiltInIssuers.issuer(withID: "capital-one"))
+        XCTAssertEqual(issuer.logoURL?.host, "logoapi.sh")
+        XCTAssertEqual(issuer.logoURL?.path, "/icon/capitalone.com.png")
     }
 
     func testIssuersMissingFromTheServiceKeepTheirBadge() throws {
         // Chase and Citi are not in LogoAPI.sh, so no request is made for them.
-        XCTAssertNil(try XCTUnwrap(CardCatalog.card(withID: "us-chase-sapphire-preferred")).logoURL)
-        XCTAssertNil(try XCTUnwrap(CardCatalog.card(withID: "us-citi-double-cash")).logoURL)
+        XCTAssertNil(try XCTUnwrap(BuiltInIssuers.issuer(withID: "chase")).logoURL)
+        XCTAssertNil(try XCTUnwrap(BuiltInIssuers.issuer(withID: "citi")).logoURL)
     }
 
-    func testNotListedCardsHaveNoLogo() {
-        XCTAssertNil(CatalogCard.custom(name: "Navy Federal").logoURL)
+    func testNotListedBanksHaveNoLogo() {
+        XCTAssertNil(Issuer.custom(name: "Navy Federal").logoURL)
     }
 
     func testEveryLogoURLIsHTTPSOnTheLogoService() {
-        for card in CardCatalog.all {
-            guard let url = card.logoURL else { continue }
-            XCTAssertEqual(url.scheme, "https", card.name)
-            XCTAssertEqual(url.host, "logoapi.sh", card.name)
+        for issuer in BuiltInIssuers.all {
+            guard let url = issuer.logoURL else { continue }
+            XCTAssertEqual(url.scheme, "https", issuer.name)
+            XCTAssertEqual(url.host, "logoapi.sh", issuer.name)
         }
     }
 }

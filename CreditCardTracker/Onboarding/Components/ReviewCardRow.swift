@@ -4,6 +4,8 @@ import SwiftUI
 /// cards without them show a dashed "Incomplete" row with an "Add details" link.
 struct ReviewCardRow: View {
     let card: TrackedCard
+    /// The card's name on screen: its issuer, numbered when the user has several cards from it ("Chase 2").
+    let title: String
     let onEdit: () -> Void
 
     var body: some View {
@@ -19,15 +21,17 @@ struct ReviewCardRow: View {
     private var completeRow: some View {
         VStack(spacing: 0) {
             HStack(spacing: 14) {
-                CardBadge(card: card.catalogCard)
+                CardBadge(issuer: card.issuer)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(card.catalogCard.displayName)
+                    Text(title)
                         .font(.app(16, .semibold))
                         .foregroundStyle(Theme.textPrimary)
-                    Text(subtitle)
-                        .font(.app(13))
-                        .foregroundStyle(Theme.textSecondary)
+                    if let aprText {
+                        Text(aprText)
+                            .font(.app(13))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                 }
 
                 Spacer(minLength: 8)
@@ -67,10 +71,9 @@ struct ReviewCardRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// "Chase · 24.99% APR", or just "Chase" when no APR was entered.
-    private var subtitle: String {
-        guard let apr = card.details.apr else { return card.catalogCard.issuer }
-        return "\(card.catalogCard.issuer) · \(FormInput.text(for: apr))% APR"
+    /// "24.99% APR", or nil when no APR was entered.
+    private var aprText: String? {
+        card.details.apr.map { "\(FormInput.text(for: $0))% APR" }
     }
 
     private static func money(_ value: Decimal?) -> String {
@@ -82,10 +85,10 @@ struct ReviewCardRow: View {
 
     private var incompleteRow: some View {
         HStack(spacing: 14) {
-            CardBadge(card: card.catalogCard, isMuted: true)
+            CardBadge(issuer: card.issuer, isMuted: true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(card.catalogCard.displayName)
+                Text(title)
                     .font(.app(16, .semibold))
                     .foregroundStyle(Theme.textSecondary)
                 Text("Incomplete")
@@ -114,7 +117,7 @@ struct ReviewCardRow: View {
     VStack(spacing: 12) {
         ReviewCardRow(
             card: TrackedCard(
-                catalogCard: CardCatalog.all[0],
+                issuer: BuiltInIssuers.all[0],
                 details: CardDetails(
                     balance: 2480.15,
                     minimumPayment: 45,
@@ -122,9 +125,10 @@ struct ReviewCardRow: View {
                     apr: 24.99
                 )
             ),
+            title: "Chase 1",
             onEdit: {}
         )
-        ReviewCardRow(card: TrackedCard(catalogCard: CardCatalog.all[1]), onEdit: {})
+        ReviewCardRow(card: TrackedCard(issuer: BuiltInIssuers.all[0]), title: "Chase 2", onEdit: {})
     }
     .padding(24)
     .background(Theme.background)

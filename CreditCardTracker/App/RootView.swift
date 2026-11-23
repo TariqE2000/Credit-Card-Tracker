@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Decides what the app shows: onboarding until the user confirms their cards, then the home screen.
 struct RootView: View {
-    @StateObject private var store = OnboardingStore(catalog: CardCatalogStore.live())
+    @StateObject private var store = OnboardingStore(catalog: IssuerCatalogStore.live())
 
     var body: some View {
         Group {

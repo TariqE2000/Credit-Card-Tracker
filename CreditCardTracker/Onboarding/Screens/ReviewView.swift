@@ -34,7 +34,7 @@ struct ReviewView: View {
 
                 VStack(spacing: 12) {
                     ForEach(store.cards) { card in
-                        ReviewCardRow(card: card) {
+                        ReviewCardRow(card: card, title: store.title(of: card)) {
                             store.path.append(.editCard(card.id))
                         }
                     }
@@ -129,12 +129,12 @@ struct ReviewView: View {
     .preferredColorScheme(.dark)
 }
 
-/// Two cards like the design: Chase Freedom Unlimited filled in, Chase Sapphire Preferred without details.
+/// Two Chase cards: the first filled in, the second without details.
 @MainActor
 private func previewStore() -> OnboardingStore {
     let store = OnboardingStore()
-    store.toggleSelection(of: CardCatalog.all[0])
-    store.toggleSelection(of: CardCatalog.all[1])
+    store.toggleSelection(of: BuiltInIssuers.all[0])
+    store.increaseCount(of: BuiltInIssuers.all[0])
     store.continueFromPickCards()
     store.saveDetails(
         CardDetails(
