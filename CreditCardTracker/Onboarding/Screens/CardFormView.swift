@@ -46,7 +46,7 @@ private struct CardFormContent: View {
     @State private var aprText: String
     @State private var showRemoveConfirmation = false
     @State private var showDatePicker = false
-    /// Turns on after "Complete" is tapped with a required field empty, so the empty ones turn red.
+    /// Turns on after "Save and continue" is tapped with a required field empty, so the empty ones turn red.
     @State private var showMissingFields = false
     @FocusState private var focus: Field?
 
@@ -375,12 +375,12 @@ private struct CardFormContent: View {
     private var primaryTitle: String {
         switch mode {
         // Moves on to the next card, or to the review screen after the last one.
-        case .onboarding: return "Complete"
+        case .onboarding: return "Save and continue"
         case .edit: return "Save"
         }
     }
 
-    /// "Complete": needs balance owed, minimum payment and due date. If one is empty it turns red and
+    /// "Save and continue": needs balance owed, minimum payment and due date. If one is empty it turns red and
     /// the cursor goes to the first empty field. "Skip details for now" is the way to skip them all.
     private func complete() {
         guard !hasMissingRequiredFields else {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Filled purple button ("Continue with 2 cards", "Complete", "Confirm and finish").
+/// Filled purple button ("Continue with 2 cards", "Save and continue", "Confirm and finish").
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
