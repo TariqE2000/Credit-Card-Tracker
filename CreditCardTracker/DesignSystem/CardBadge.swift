@@ -34,7 +34,8 @@ struct CardBadge: View {
         .overlay {
             if let logoURL {
                 AsyncImage(url: logoURL, transaction: Transaction(animation: .easeIn(duration: 0.2))) { phase in
-                    if case .success(let image) = phase {
+                    switch phase {
+                    case .success(let image):
                         image
                             .resizable()
                             .scaledToFit()
@@ -42,6 +43,13 @@ struct CardBadge: View {
                             .frame(width: size, height: size)
                             .background(Color.white, in: shape)
                             .overlay(shape.strokeBorder(Theme.border, lineWidth: 1))
+                    case .failure(let error):
+                        // The colored badge underneath stays. This only prints why, in debug builds.
+                        Color.clear
+                            .frame(width: 0, height: 0)
+                            .onAppear { LogoService.reportFailure(for: logoURL, error: error) }
+                    default:
+                        EmptyView()
                     }
                 }
             }

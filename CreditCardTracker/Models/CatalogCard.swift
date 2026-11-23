@@ -38,6 +38,27 @@ enum LogoService {
     }
 }
 
+extension LogoService {
+    /// Debug builds only: when a logo does not load, ask the server again and print what it answered,
+    /// so the reason shows in the Xcode console (lines start with "[Logo]").
+    static func reportFailure(for url: URL, error: Error) {
+        #if DEBUG
+        print("[Logo] could not load \(url.absoluteString): \(error.localizedDescription)")
+        Task {
+            do {
+                let (data, response) = try await URLSession.shared.data(from: url)
+                if let http = response as? HTTPURLResponse {
+                    let type = http.value(forHTTPHeaderField: "Content-Type") ?? "no content type"
+                    print("[Logo] the server answered \(http.statusCode), \(type), \(data.count) bytes")
+                }
+            } catch {
+                print("[Logo] network error: \(error.localizedDescription)")
+            }
+        }
+        #endif
+    }
+}
+
 extension CatalogCard {
     /// Where to load this card's issuer logo from. Nil when there is none to try.
     var logoURL: URL? {
