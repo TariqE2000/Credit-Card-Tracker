@@ -28,6 +28,31 @@ struct DueDate: Hashable {
         String(format: "%02d%02d", month, day)
     }
 
+    /// Takes the month and day from a date picked in the calendar. The year is dropped.
+    init?(date: Date, calendar: Calendar = .current) {
+        let parts = calendar.dateComponents([.month, .day], from: date)
+        guard let month = parts.month, let day = parts.day else { return nil }
+        self.init(month: month, day: day)
+    }
+
+    /// The first day on or after `reference` that falls on this month and day. The calendar opens
+    /// on this date. Feb 29 waits for the next leap year. Nil only if no such day is found.
+    func nextOccurrence(onOrAfter reference: Date = Date(), calendar: Calendar = .current) -> Date? {
+        let start = calendar.startOfDay(for: reference)
+        let firstYear = calendar.component(.year, from: start)
+        // Eight years is always enough to reach the next Feb 29.
+        for year in firstYear...(firstYear + 8) {
+            let parts = DateComponents(year: year, month: month, day: day)
+            guard let date = calendar.date(from: parts),
+                  calendar.component(.month, from: date) == month,
+                  calendar.component(.day, from: date) == day,
+                  date >= start
+            else { continue }
+            return date
+        }
+        return nil
+    }
+
     /// "Dec 14"
     var shortDescription: String {
         let formatter = DateFormatter()
@@ -54,7 +79,8 @@ struct CardDetails: Hashable {
 /// A card the user picked, together with whatever details they entered.
 struct TrackedCard: Identifiable, Hashable {
     let id: UUID
-    let catalogCard: CatalogCard
+    /// Changes only for a not-listed card, when the user types its name.
+    var catalogCard: CatalogCard
     var details: CardDetails
 
     init(id: UUID = UUID(), catalogCard: CatalogCard, details: CardDetails = CardDetails()) {

@@ -4,7 +4,6 @@ import SwiftUI
 struct PickCardsView: View {
     @EnvironmentObject private var store: OnboardingStore
     @State private var query = ""
-    @State private var showCustomCardAlert = false
 
     private var results: [CatalogCard] {
         CardCatalog.cards(matching: query)
@@ -42,11 +41,6 @@ struct PickCardsView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
-        .alert("Custom cards are coming soon", isPresented: $showCustomCardAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("For now, pick the closest card from the list.")
-        }
     }
 
     // MARK: Pieces
@@ -113,7 +107,9 @@ struct PickCardsView: View {
     private var bottomBar: some View {
         VStack(spacing: 14) {
             Button("My card is not listed") {
-                showCustomCardAlert = true
+                // Adds one more card to the count. Its name is typed on its card form.
+                store.addNotListedCard()
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
             }
             .buttonStyle(.textLink)
 

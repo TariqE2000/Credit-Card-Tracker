@@ -7,17 +7,28 @@ struct CardBadge: View {
     var size: CGFloat = 40
     /// Gray version used for a card that has no details yet.
     var isMuted = false
+    /// An SF Symbol shown instead of the letters, on a gray badge (used for cards that are not listed).
+    var systemImage: String?
+
+    private var isGray: Bool { isMuted || systemImage != nil }
 
     var body: some View {
-        Text(code)
-            .font(.app(size * 0.33, .bold))
-            .foregroundStyle(isMuted ? Theme.textSecondary : Color.white)
-            .frame(width: size, height: size)
-            .background(
-                isMuted ? Theme.mutedBadge : color,
-                in: RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
-            )
-            .accessibilityHidden(true)
+        Group {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: size * 0.42, weight: .medium))
+            } else {
+                Text(code)
+                    .font(.app(size * 0.33, .bold))
+            }
+        }
+        .foregroundStyle(isGray ? Theme.textSecondary : Color.white)
+        .frame(width: size, height: size)
+        .background(
+            isGray ? Theme.mutedBadge : color,
+            in: RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
+        )
+        .accessibilityHidden(true)
     }
 }
 
@@ -27,7 +38,8 @@ extension CardBadge {
             code: card.badgeCode,
             color: Color(hex: card.badgeColorHex),
             size: size,
-            isMuted: isMuted
+            isMuted: isMuted,
+            systemImage: card.isCustom ? "creditcard" : nil
         )
     }
 }

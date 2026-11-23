@@ -24,7 +24,7 @@ final class OnboardingStore: ObservableObject {
     @Published private(set) var isSignedIn = false
     @Published private(set) var hasFinishedOnboarding = false
 
-    /// Catalog IDs in the order the user tapped them.
+    /// Catalog IDs in the order the user tapped them. Cards added with "My card is not listed" are in here too.
     @Published private(set) var selectedCatalogIDs: [String] = []
     /// The picked cards with their details. Rebuilt each time the user continues from "Pick your cards".
     @Published private(set) var cards: [TrackedCard] = []
@@ -62,6 +62,13 @@ final class OnboardingStore: ObservableObject {
         }
     }
 
+    // MARK: Cards that are not listed
+
+    /// "My card is not listed": adds one more picked card. Its name is typed on its card form.
+    func addNotListedCard() {
+        selectedCatalogIDs.append(CatalogCard.customIDPrefix + UUID().uuidString)
+    }
+
     /// Builds `cards` from the picked catalog entries, keeping any details already typed for cards
     /// that are still picked, and opens the form for the first card.
     func continueFromPickCards() {
@@ -71,10 +78,15 @@ final class OnboardingStore: ObservableObject {
         )
         cards = selectedCatalogIDs.compactMap { id -> TrackedCard? in
             if let card = existing[id] { return card }
-            return CardCatalog.card(withID: id).map { TrackedCard(catalogCard: $0) }
+            return resolvedCard(withID: id).map { TrackedCard(catalogCard: $0) }
         }
         guard let first = cards.first else { return }
         path.append(.cardForm(first.id))
+    }
+
+    private func resolvedCard(withID id: String) -> CatalogCard? {
+        if let card = CardCatalog.card(withID: id) { return card }
+        return id.hasPrefix(CatalogCard.customIDPrefix) ? CatalogCard.custom(id: id) : nil
     }
 
     // MARK: Card form
@@ -91,6 +103,12 @@ final class OnboardingStore: ObservableObject {
     func saveDetails(_ details: CardDetails, for id: UUID) {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
         cards[index].details = details
+    }
+
+    /// Sets the name of a not-listed card as the user types it. Catalog cards keep their names.
+    func setCustomName(_ name: String, for id: UUID) {
+        guard let index = cards.firstIndex(where: { $0.id == id }), cards[index].catalogCard.isCustom else { return }
+        cards[index].catalogCard = CatalogCard.custom(id: cards[index].catalogCard.id, name: name)
     }
 
     /// Goes to the next card's form, or to the review screen after the last card.

@@ -44,10 +44,11 @@ private struct CardFormContent: View {
     @State private var dueDigits: String
     @State private var aprText: String
     @State private var showRemoveConfirmation = false
+    @State private var showDatePicker = false
     @FocusState private var focus: Field?
 
     private enum Field: Hashable {
-        case balance, minimum, due, apr
+        case name, balance, minimum, due, apr
     }
 
     init(card: TrackedCard, mode: CardFormMode, position: Int, total: Int) {
@@ -77,24 +78,30 @@ private struct CardFormContent: View {
     // MARK: Body
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                cardTitle
-                    .padding(.top, 28)
-                fields
-                    .padding(.top, 24)
-                HintBox(text: "Find these on your latest statement, or in your card issuer's app.")
-                    .padding(.top, 20)
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
+                    cardTitle
+                        .padding(.top, 28)
+                    fields
+                        .padding(.top, 24)
+                    HintBox(text: "Find these on your latest statement, or in your card issuer's app.")
+                        .padding(.top, 20)
+
+                    // With room to spare this pushes the buttons to the bottom of the screen. When there
+                    // is no room (keyboard open, small screen), the buttons scroll with the rest of the form.
+                    Spacer(minLength: 24)
+
+                    actions
+                }
+                .padding(.horizontal, Theme.Metrics.screenPadding)
+                .padding(.bottom, 8)
+                .frame(minHeight: proxy.size.height)
             }
-            .padding(.horizontal, Theme.Metrics.screenPadding)
-            .padding(.bottom, 24)
+            .scrollDismissesKeyboard(.interactively)
         }
-        .scrollDismissesKeyboard(.interactively)
         .background(Theme.background.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            actions
-        }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -103,8 +110,11 @@ private struct CardFormContent: View {
                 Button("Done") { focus = nil }
             }
         }
+        .sheet(isPresented: $showDatePicker) {
+            DueDatePickerSheet(digits: $dueDigits)
+        }
         .confirmationDialog(
-            "Remove \(card.catalogCard.name)?",
+            "Remove \(card.catalogCard.displayName)?",
             isPresented: $showRemoveConfirmation,
             titleVisibility: .visible
         ) {
@@ -138,7 +148,17 @@ private struct CardFormContent: View {
         }
     }
 
+    @ViewBuilder
     private var cardTitle: some View {
+        if card.catalogCard.isCustom {
+            notListedTitle
+        } else {
+            listedTitle
+        }
+    }
+
+    /// A card from the catalog: badge, name and issuer.
+    private var listedTitle: some View {
         HStack(spacing: 14) {
             CardBadge(card: card.catalogCard, size: 48)
 
@@ -148,11 +168,59 @@ private struct CardFormContent: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(card.catalogCard.issuer) · Every field is optional")
+                Text(card.catalogCard.issuer)
                     .font(.app(14))
                     .foregroundStyle(Theme.textSecondary)
             }
         }
+    }
+
+    /// A card added with "My card is not listed": gray card icon and a field for the name.
+    /// Left empty, the card is called "Other card".
+    private var notListedTitle: some View {
+        HStack(spacing: 14) {
+            CardBadge(card: card.catalogCard, size: 48)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Card name")
+                    .font(.app(12))
+                    .foregroundStyle(Theme.textSecondary)
+
+                HStack(spacing: 8) {
+                    TextField(
+                        "",
+                        text: nameBinding,
+                        prompt: Text(CatalogCard.defaultCustomName).foregroundStyle(Theme.textSecondary)
+                    )
+                    .font(.app(22, .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.done)
+                    .focused($focus, equals: .name)
+                    .onSubmit { focus = nil }
+                    .accessibilityLabel("Card name")
+
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                        .accessibilityHidden(true)
+                }
+
+                Text(card.catalogCard.issuer)
+                    .font(.app(14))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { focus = .name }
+    }
+
+    /// The name is saved as it is typed, so it is kept even if the user goes back.
+    private var nameBinding: Binding<String> {
+        Binding(
+            get: { card.catalogCard.name },
+            set: { store.setCustomName($0, for: card.id) }
+        )
     }
 
     private var fields: some View {
@@ -231,10 +299,19 @@ private struct CardFormContent: View {
             .focused($focus, equals: .due)
             .accessibilityLabel("Due date, month and day")
 
-            Image(systemName: "calendar")
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.textSecondary)
-                .accessibilityHidden(true)
+            // Opens a calendar to pick the date instead of typing it.
+            Button {
+                focus = nil
+                showDatePicker = true
+            } label: {
+                Image(systemName: "calendar")
+                    .font(.system(size: 15))
+                    .foregroundStyle(showDatePicker ? Theme.accent : Theme.textSecondary)
+                    .frame(width: 32, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Pick due date from calendar")
         }
         .inputBox(isFocused: focus == .due, hasError: showDueDateError)
         .contentShape(Rectangle())
@@ -264,10 +341,6 @@ private struct CardFormContent: View {
             .buttonStyle(.customTextLink(size: 15, weight: .medium, color: Theme.danger))
             .padding(.top, 4)
         }
-        .padding(.horizontal, Theme.Metrics.screenPadding)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-        .background(Theme.background)
     }
 
     // MARK: Actions

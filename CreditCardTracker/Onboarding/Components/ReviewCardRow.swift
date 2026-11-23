@@ -22,7 +22,7 @@ struct ReviewCardRow: View {
                 CardBadge(card: card.catalogCard)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(card.catalogCard.name)
+                    Text(card.catalogCard.displayName)
                         .font(.app(16, .semibold))
                         .foregroundStyle(Theme.textPrimary)
                     Text(subtitle)
@@ -85,7 +85,7 @@ struct ReviewCardRow: View {
             CardBadge(card: card.catalogCard, isMuted: true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(card.catalogCard.name)
+                Text(card.catalogCard.displayName)
                     .font(.app(16, .semibold))
                     .foregroundStyle(Theme.textSecondary)
                 Text("Incomplete")
