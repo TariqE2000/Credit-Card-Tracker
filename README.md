@@ -66,29 +66,46 @@ the next piece of design work.
 - **Saving your data.** Everything lives in memory. If you quit the app, your cards are gone. The plan is
   to save them to the user's account in Supabase.
 - **Reminders for due dates.** The tagline promises this; nothing is built for it yet.
-- **A bigger card catalog.** See [The card catalog](#the-card-catalog).
+- **Pictures of each card.** The list has names and issuers but no card art. Cards show a colored badge or
+  the issuer's logo for now.
 
 ## The card catalog
 
-Today the catalog is a **hard-coded list of 13 cards from 8 issuers** in `Models/CardCatalog.swift`:
-Chase, American Express, Capital One, Citi, Discover, Wells Fargo, Bank of America and Apple. That is only
-a stand-in.
+The list on **Pick your cards** comes from [opencard-db](https://github.com/thedavidweng/opencard-db), an
+open-source database of credit cards (code MIT, data CC BY 4.0). At the pinned release, `v0.4.2`, it has
+**435 US cards from 51 issuers**: personal and business, active and discontinued, because people still
+carry cards that are no longer sold.
 
-The next step is to replace it with a real, free dataset. The leading candidate is
-[opencard-db](https://github.com/thedavidweng/opencard-db), an open-source database of credit card
-products (code MIT, data CC BY 4.0). Its US data covers hundreds of cards across about 50 issuers and can be
-bundled inside the app as a small JSON file, so it needs no network call, no API key and has no rate limit.
-If we use it, the app will credit it in a data-sources screen and in this README. This has not been
-decided or built yet.
+How the app gets it:
 
-Cards that are not in the catalog are handled by **My card is not listed**.
+1. **One download.** A plain HTTPS GET to the jsDelivr CDN, which is free and needs no account, key or
+   request limit: `cdn.jsdelivr.net/gh/thedavidweng/opencard-db@v0.4.2/exports/cards-all.json`. That file
+   also holds Canada and China (about 2.3 MB), so the app keeps only the US cards.
+2. **Saved on the phone.** The result is saved as one small file (about 65 KB, in Application Support and
+   left out of iCloud backups). Later launches show it instantly and do not download again.
+3. **Pinned to one release.** A tagged address never changes, so a mistake in opencard-db's newest data
+   cannot break the app. To get newer cards, change `CardCatalogSource.tag`, check that Pick cards still
+   loads, and ship an update. Tags are listed on
+   [their releases page](https://github.com/thedavidweng/opencard-db/releases).
+4. **If it fails.** With no internet on the very first launch, Pick cards shows a built-in list of 13
+   popular cards (`CardCatalog`) with a **Try again** button. **My card is not listed** always works.
+   A list saved earlier stays on screen if a later download fails. A file with fewer than 50 US cards is
+   treated as a failed download and is never saved.
+
+The data has names and issuers but no badge colors, so each card's badge comes from its issuer
+(`IssuerStyle`): the colors the app already used for the big banks, and a steady color made from the
+issuer's ID for everyone else. Big issuers are listed first, then the rest alphabetically.
+
+**Credit:** the CC BY 4.0 license asks for attribution, so the bottom of the list says "Card list from
+opencard-db (CC BY 4.0)" and links to the project.
 
 ## Issuer logos
 
 Logos come from [LogoAPI.sh](https://logoapi.sh), which needs no key, no sign-up and no attribution on its
 free tier (capped at 2 million requests a month per site).
 
-- Each catalog entry can carry a `logoDomain`, the issuer's website, such as `capitalone.com`.
+- Each card can carry a `logoDomain`, the issuer's website, such as `capitalone.com`. The table of
+  domains is in `IssuerStyle`.
 - The app asks for `https://logoapi.sh/icon/{domain}.png` as a PNG, because iOS image views cannot draw
   SVG, with `fallback=404` so a missing logo comes back as an error instead of a stand-in picture.
 - The logo is shown on a white tile in the card's badge once it has loaded. **If it cannot load, the
@@ -97,7 +114,8 @@ free tier (capped at 2 million requests a month per site).
 - Chase and Citi are not in LogoAPI.sh's catalog, so those cards show the colored badge.
 - In debug builds, a failed logo prints lines starting with `[Logo]` in the Xcode console explaining why.
 
-To add a logo for another issuer, set `logoDomain` on its entry in `CardCatalog`.
+To add a logo for another issuer, add its opencard-db issuer ID and website to `logoDomains` in
+`IssuerStyle`.
 
 ## Tech
 
@@ -108,6 +126,7 @@ To add a logo for another issuer, set `logoDomain` on its entry in `CardCatalog`
 | Project generation | [XcodeGen](https://github.com/yonaskolb/XcodeGen) from `project.yml` (the `.xcodeproj` is generated and not committed) |
 | Dependencies | None. The app uses only Apple frameworks. |
 | Backend | None yet. Supabase is planned for sign-in and saving. |
+| Network | One download of the card list from the jsDelivr CDN, plus issuer logos from LogoAPI.sh. No user data is sent. |
 | Appearance | Light and dark mode, using the onboarding design's colors |
 | Font | Inter, falling back to the system font until the font files are added to the bundle |
 
@@ -117,7 +136,10 @@ To add a logo for another issuer, set `logoDomain` on its entry in `CardCatalog`
 CreditCardTracker/
   App/            App entry point and RootView (onboarding until finished, then home)
   DesignSystem/   Theme (colors, sizes), buttons, card badge, logo, back button
-  Models/         CatalogCard, CardCatalog, TrackedCard, CardDetails, DueDate
+  Models/         CatalogCard, TrackedCard, CardDetails, DueDate
+                  Card list: CardCatalogStore (load, save, fall back), CardCatalogSource (pinned release),
+                  OpenCardMapper (file to cards), IssuerStyle (badges), CardCatalogCache, CardCatalogFetcher,
+                  CardCatalog (the 13 built-in cards)
   Onboarding/
     OnboardingStore.swift   The one shared state object for the whole flow
     OnboardingFlow.swift    The NavigationStack and its routes
@@ -163,7 +185,7 @@ Work is split into **stacked pull requests, one feature each**. Each pull reques
 the one before it, so they are reviewed and merged in order:
 
 Project foundation, then sign up, log in, pick your cards, card form, review, not-listed cards with a date
-picker, add another card, and issuer logos.
+picker, add another card, issuer logos, a README rewrite, and the card list from the CDN.
 
 ## Placeholders to replace
 
@@ -174,6 +196,12 @@ picker, add another card, and issuer logos.
   `example.com`.
 - Sign in with Apple and Google, as described above.
 
+## Credits
+
+- Card list: [opencard-db](https://github.com/thedavidweng/opencard-db) by David Weng, code MIT, data
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Issuer logos: [LogoAPI.sh](https://logoapi.sh).
+
 ## License
 
-No license has been chosen yet.
+No license has been chosen yet for this app.

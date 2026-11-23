@@ -41,8 +41,8 @@ final class NotListedCardStoreTests: XCTestCase {
 
     func testTappingNotListedIncreasesTheCount() throws {
         let store = OnboardingStore()
-        store.toggleSelection(of: try card("chase-freedom-unlimited"))
-        store.toggleSelection(of: try card("chase-sapphire-preferred"))
+        store.toggleSelection(of: try card("us-chase-freedom-unlimited"))
+        store.toggleSelection(of: try card("us-chase-sapphire-preferred"))
         XCTAssertEqual(store.selectedCount, 2)
 
         store.addNotListedCard()
@@ -55,9 +55,9 @@ final class NotListedCardStoreTests: XCTestCase {
     func testContinueShowsTheNotListedCardsInTheOrderTheyWerePicked() throws {
         let store = OnboardingStore()
         store.signIn(with: .apple)
-        store.toggleSelection(of: try card("chase-freedom-unlimited"))
+        store.toggleSelection(of: try card("us-chase-freedom-unlimited"))
         store.addNotListedCard()
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
 
         store.continueFromPickCards()
 
@@ -121,7 +121,7 @@ final class NotListedCardStoreTests: XCTestCase {
         store.saveDetails(details, for: id)
 
         // Back on "Pick your cards", the user taps another card and continues.
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         store.continueFromPickCards()
 
         XCTAssertEqual(store.cards.count, 2)
@@ -132,7 +132,7 @@ final class NotListedCardStoreTests: XCTestCase {
 
     func testCatalogCardNamesCannotBeChanged() throws {
         let store = OnboardingStore()
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         store.signIn(with: .apple)
         store.continueFromPickCards()
         let id = store.cards[0].id
@@ -145,7 +145,7 @@ final class NotListedCardStoreTests: XCTestCase {
     func testRemovingANotListedCardLowersTheCount() throws {
         let store = OnboardingStore()
         store.signIn(with: .apple)
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         store.addNotListedCard()
         store.continueFromPickCards()
         XCTAssertEqual(store.selectedCount, 2)

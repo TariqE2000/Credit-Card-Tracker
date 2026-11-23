@@ -11,6 +11,8 @@ struct OnboardingFlow: View {
                     destination(for: route)
                 }
         }
+        // The pick screens read the card list from here.
+        .environmentObject(store.catalog)
     }
 
     @ViewBuilder
