@@ -17,6 +17,13 @@ final class NotListedCardModelTests: XCTestCase {
         XCTAssertEqual(CatalogCard.custom(name: "   ").displayName, "Other card")
     }
 
+    func testLabelIsTheFirstWordOfTheName() {
+        XCTAssertEqual(CatalogCard.custom(name: "Navy Federal").issuer, "Navy")
+        XCTAssertEqual(CatalogCard.custom(name: "  Costco  ").issuer, "Costco")
+        XCTAssertEqual(CatalogCard.custom(name: "").issuer, "Not listed")
+        XCTAssertEqual(CatalogCard.custom(name: "   ").issuer, "Not listed")
+    }
+
     func testNamedCardShowsItsTrimmedName() {
         XCTAssertEqual(CatalogCard.custom(name: "  Navy Federal ").displayName, "Navy Federal")
     }
@@ -83,6 +90,23 @@ final class NotListedCardStoreTests: XCTestCase {
         store.setCustomName("Navy Federal", for: id)
 
         XCTAssertEqual(store.card(withID: id)?.catalogCard.displayName, "Navy Federal")
+    }
+
+    func testLabelUnderTheNameFollowsTheFirstWordAsItIsTyped() {
+        let store = OnboardingStore()
+        store.signIn(with: .apple)
+        store.addNotListedCard()
+        store.continueFromPickCards()
+        let id = store.cards[0].id
+        XCTAssertEqual(store.card(withID: id)?.catalogCard.issuer, "Not listed")
+
+        store.setCustomName("Navy Federal", for: id)
+        XCTAssertEqual(store.card(withID: id)?.catalogCard.issuer, "Navy")
+
+        store.setCustomName("Costco Anywhere Visa", for: id)
+        XCTAssertEqual(store.card(withID: id)?.catalogCard.issuer, "Costco")
+
+        store.setCustomName("", for: id)
         XCTAssertEqual(store.card(withID: id)?.catalogCard.issuer, "Not listed")
     }
 

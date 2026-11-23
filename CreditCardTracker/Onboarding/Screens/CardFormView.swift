@@ -77,24 +77,30 @@ private struct CardFormContent: View {
     // MARK: Body
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                cardTitle
-                    .padding(.top, 28)
-                fields
-                    .padding(.top, 24)
-                HintBox(text: "Find these on your latest statement, or in your card issuer's app.")
-                    .padding(.top, 20)
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
+                    cardTitle
+                        .padding(.top, 28)
+                    fields
+                        .padding(.top, 24)
+                    HintBox(text: "Find these on your latest statement, or in your card issuer's app.")
+                        .padding(.top, 20)
+
+                    // With room to spare this pushes the buttons to the bottom of the screen. When there
+                    // is no room (keyboard open, small screen), the buttons scroll with the rest of the form.
+                    Spacer(minLength: 24)
+
+                    actions
+                }
+                .padding(.horizontal, Theme.Metrics.screenPadding)
+                .padding(.bottom, 8)
+                .frame(minHeight: proxy.size.height)
             }
-            .padding(.horizontal, Theme.Metrics.screenPadding)
-            .padding(.bottom, 24)
+            .scrollDismissesKeyboard(.interactively)
         }
-        .scrollDismissesKeyboard(.interactively)
         .background(Theme.background.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            actions
-        }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -322,10 +328,6 @@ private struct CardFormContent: View {
             .buttonStyle(.customTextLink(size: 15, weight: .medium, color: Theme.danger))
             .padding(.top, 4)
         }
-        .padding(.horizontal, Theme.Metrics.screenPadding)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-        .background(Theme.background)
     }
 
     // MARK: Actions

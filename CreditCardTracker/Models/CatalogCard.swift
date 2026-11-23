@@ -17,7 +17,8 @@ struct CatalogCard: Identifiable, Hashable {
 
 // MARK: - Cards that are not listed
 
-/// A card the user added with "My card is not listed". The user types its name on the card form.
+/// A card the user added with "My card is not listed". The user types its name on the card form,
+/// and the first word of that name is shown where a catalog card shows its issuer.
 extension CatalogCard {
     static let customIDPrefix = "custom-"
     /// What an unnamed not-listed card is called.
@@ -29,7 +30,12 @@ extension CatalogCard {
         id: String = CatalogCard.customIDPrefix + UUID().uuidString,
         name: String = ""
     ) -> CatalogCard {
-        CatalogCard(id: id, name: name, issuer: "Not listed", badgeCode: "", badgeColorHex: 0x6B6B78)
+        CatalogCard(id: id, name: name, issuer: firstWord(of: name) ?? "Not listed", badgeCode: "", badgeColorHex: 0x6B6B78)
+    }
+
+    /// "Navy Federal" gives "Navy". Nil when there is no word yet.
+    static func firstWord(of name: String) -> String? {
+        name.split(whereSeparator: \.isWhitespace).first.map(String.init)
     }
 
     /// The name to show. A not-listed card left unnamed is shown as "Other card".
