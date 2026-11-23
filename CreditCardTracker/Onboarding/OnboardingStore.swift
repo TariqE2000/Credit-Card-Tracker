@@ -24,8 +24,10 @@ final class OnboardingStore: ObservableObject {
     @Published private(set) var isSignedIn = false
     @Published private(set) var hasFinishedOnboarding = false
 
-    /// Catalog IDs in the order the user tapped them.
+    /// Catalog IDs in the order the user tapped them. Custom cards are in here too.
     @Published private(set) var selectedCatalogIDs: [String] = []
+    /// Cards the user added with "My card is not listed". Always picked.
+    @Published private(set) var customCards: [CatalogCard] = []
     /// The picked cards with their details. Rebuilt each time the user continues from "Pick your cards".
     @Published private(set) var cards: [TrackedCard] = []
 
@@ -62,16 +64,57 @@ final class OnboardingStore: ObservableObject {
         }
     }
 
+    // MARK: Custom cards
+
+    /// "My card is not listed": adds a picked card with no name yet, for the user to name.
+    @discardableResult
+    func addCustomCard() -> CatalogCard {
+        let card = CatalogCard.custom(name: "")
+        customCards.append(card)
+        selectedCatalogIDs.append(card.id)
+        return card
+    }
+
+    func renameCustomCard(_ id: String, to name: String) {
+        guard let index = customCards.firstIndex(where: { $0.id == id }) else { return }
+        customCards[index] = CatalogCard.custom(id: id, name: name)
+    }
+
+    func removeCustomCard(_ id: String) {
+        customCards.removeAll { $0.id == id }
+        selectedCatalogIDs.removeAll { $0 == id }
+    }
+
+    /// True while a custom card has no name. The user has to name it before continuing.
+    var hasUnnamedCustomCard: Bool {
+        customCards.contains { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
+    var canContinueFromPickCards: Bool {
+        selectedCount > 0 && !hasUnnamedCustomCard
+    }
+
+    /// The catalog card or custom card for an ID. Custom card names are tidied of extra spaces.
+    private func resolvedCard(withID id: String) -> CatalogCard? {
+        if let card = CardCatalog.card(withID: id) { return card }
+        guard let custom = customCards.first(where: { $0.id == id }) else { return nil }
+        return CatalogCard.custom(id: id, name: custom.name.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
     /// Builds `cards` from the picked catalog entries, keeping any details already typed for cards
     /// that are still picked, and opens the form for the first card.
     func continueFromPickCards() {
+        guard !hasUnnamedCustomCard else { return }
+
         let existing = Dictionary(
             cards.map { ($0.catalogCard.id, $0) },
             uniquingKeysWith: { first, _ in first }
         )
         cards = selectedCatalogIDs.compactMap { id -> TrackedCard? in
-            if let card = existing[id] { return card }
-            return CardCatalog.card(withID: id).map { TrackedCard(catalogCard: $0) }
+            guard let catalogCard = resolvedCard(withID: id) else { return nil }
+            guard let old = existing[id] else { return TrackedCard(catalogCard: catalogCard) }
+            // Keep what was typed, but pick up a custom card that was renamed in the meantime.
+            return TrackedCard(id: old.id, catalogCard: catalogCard, details: old.details)
         }
         guard let first = cards.first else { return }
         path.append(.cardForm(first.id))
@@ -108,6 +151,7 @@ final class OnboardingStore: ObservableObject {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
         let removed = cards.remove(at: index)
         selectedCatalogIDs.removeAll { $0 == removed.catalogCard.id }
+        customCards.removeAll { $0.id == removed.catalogCard.id }
 
         if cards.isEmpty {
             // Nothing left: back to picking cards.

@@ -44,7 +44,7 @@ struct CardPickRow: View {
     }
 }
 
-private struct Checkbox: View {
+struct Checkbox: View {
     let isOn: Bool
 
     var body: some View {
