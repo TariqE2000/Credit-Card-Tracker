@@ -1,12 +1,18 @@
 import SwiftUI
 
-/// Decides what the app shows. For now that is always the onboarding flow.
+/// Decides what the app shows: onboarding until the user confirms their cards, then the home screen.
 struct RootView: View {
     @StateObject private var store = OnboardingStore()
 
     var body: some View {
-        OnboardingFlow()
-            .environmentObject(store)
+        Group {
+            if store.hasFinishedOnboarding {
+                HomePlaceholderView()
+            } else {
+                OnboardingFlow()
+            }
+        }
+        .environmentObject(store)
     }
 }
 

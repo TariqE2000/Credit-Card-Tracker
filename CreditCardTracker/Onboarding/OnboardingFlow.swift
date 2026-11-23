@@ -22,10 +22,10 @@ struct OnboardingFlow: View {
             PickCardsView()
         case .cardForm(let id):
             CardFormView(cardID: id)
-        case .editCard:
-            ComingSoonView(title: "Edit card")
+        case .editCard(let id):
+            CardFormView(cardID: id, mode: .edit)
         case .review:
-            ComingSoonView(title: "Review cards")
+            ReviewView()
         }
     }
 }

@@ -1,8 +1,17 @@
 import SwiftUI
 
+/// Where the form was opened from.
+enum CardFormMode {
+    /// Right after picking cards: "Card 1 of 2", then on to the next card.
+    case onboarding
+    /// From "Edit" or "Add details" on the review screen: saving goes back to the review screen.
+    case edit
+}
+
 /// "Card 1 of 2": optional balance, minimum payment, due date and APR for one picked card.
 struct CardFormView: View {
     let cardID: UUID
+    var mode: CardFormMode = .onboarding
 
     @EnvironmentObject private var store: OnboardingStore
 
@@ -10,6 +19,7 @@ struct CardFormView: View {
         if let card = store.card(withID: cardID) {
             CardFormContent(
                 card: card,
+                mode: mode,
                 position: store.position(of: cardID) ?? 1,
                 total: max(store.cards.count, 1)
             )
@@ -22,10 +32,12 @@ struct CardFormView: View {
 
 private struct CardFormContent: View {
     let card: TrackedCard
+    let mode: CardFormMode
     let position: Int
     let total: Int
 
     @EnvironmentObject private var store: OnboardingStore
+    @Environment(\.dismiss) private var dismiss
 
     @State private var balanceText: String
     @State private var minimumText: String
@@ -38,8 +50,9 @@ private struct CardFormContent: View {
         case balance, minimum, due, apr
     }
 
-    init(card: TrackedCard, position: Int, total: Int) {
+    init(card: TrackedCard, mode: CardFormMode, position: Int, total: Int) {
         self.card = card
+        self.mode = mode
         self.position = position
         self.total = total
         _balanceText = State(initialValue: FormInput.text(for: card.details.balance))
@@ -104,15 +117,25 @@ private struct CardFormContent: View {
 
     // MARK: Pieces
 
+    @ViewBuilder
     private var header: some View {
-        HStack(spacing: 16) {
-            BackButton()
-            StepProgressBar(progress: Double(position) / Double(total))
-            Text("Card \(position) of \(total)")
-                .font(.app(13))
-                .foregroundStyle(Theme.textSecondary)
+        switch mode {
+        case .onboarding:
+            HStack(spacing: 16) {
+                BackButton()
+                StepProgressBar(progress: Double(position) / Double(total))
+                Text("Card \(position) of \(total)")
+                    .font(.app(13))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .padding(.top, 8)
+        case .edit:
+            HStack {
+                BackButton()
+                Spacer()
+            }
+            .padding(.top, 8)
         }
-        .padding(.top, 8)
     }
 
     private var cardTitle: some View {
@@ -220,17 +243,19 @@ private struct CardFormContent: View {
 
     private var actions: some View {
         VStack(spacing: 12) {
-            Button(isLastCard ? "Review cards" : "Next card") {
+            Button(primaryTitle) {
                 saveAndContinue()
             }
             .buttonStyle(.primary)
             .disabled(!canSave)
 
-            Button("Skip details for now") {
-                focus = nil
-                store.advance(from: card.id)
+            if mode == .onboarding {
+                Button("Skip details for now") {
+                    focus = nil
+                    store.advance(from: card.id)
+                }
+                .buttonStyle(.secondary)
             }
-            .buttonStyle(.secondary)
 
             Button("Remove this card") {
                 focus = nil
@@ -247,6 +272,13 @@ private struct CardFormContent: View {
 
     // MARK: Actions
 
+    private var primaryTitle: String {
+        switch mode {
+        case .onboarding: return isLastCard ? "Review cards" : "Next card"
+        case .edit: return "Save"
+        }
+    }
+
     private func saveAndContinue() {
         focus = nil
         let details = CardDetails(
@@ -256,7 +288,10 @@ private struct CardFormContent: View {
             apr: FormInput.decimal(from: aprText)
         )
         store.saveDetails(details, for: card.id)
-        store.advance(from: card.id)
+        switch mode {
+        case .onboarding: store.advance(from: card.id)
+        case .edit: dismiss()
+        }
     }
 }
 
@@ -276,6 +311,14 @@ private struct CardFormContent: View {
     }
     .environmentObject(store)
     .preferredColorScheme(.dark)
+}
+
+#Preview("Card form – edit") {
+    let store = previewStore()
+    NavigationStack {
+        CardFormView(cardID: store.cards[0].id, mode: .edit)
+    }
+    .environmentObject(store)
 }
 
 /// A store with the first two cards picked and the first form open, like the design ("Card 1 of 2").
