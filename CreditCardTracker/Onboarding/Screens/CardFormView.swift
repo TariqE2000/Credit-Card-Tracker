@@ -46,6 +46,8 @@ private struct CardFormContent: View {
     @State private var aprText: String
     @State private var showRemoveConfirmation = false
     @State private var showDatePicker = false
+    /// Turns on after "Complete" is tapped with a required field empty, so the empty ones turn red.
+    @State private var showMissingFields = false
     @FocusState private var focus: Field?
 
     private enum Field: Hashable {
@@ -69,6 +71,29 @@ private struct CardFormContent: View {
     private var minimumIsValid: Bool { FormInput.isValidOptionalAmount(minimumText) }
     private var aprIsValid: Bool { FormInput.isValidOptionalAmount(aprText) }
     private var dueDateIsValid: Bool { dueDigits.isEmpty || DueDate(digits: dueDigits) != nil }
+
+    // Balance owed, minimum payment and due date are needed to finish a card. APR is optional.
+    private var balanceIsMissing: Bool { FormInput.isBlank(balanceText) }
+    private var minimumIsMissing: Bool { FormInput.isBlank(minimumText) }
+    private var dueDateIsMissing: Bool { dueDigits.isEmpty }
+    private var hasMissingRequiredFields: Bool {
+        balanceIsMissing || minimumIsMissing || dueDateIsMissing
+    }
+
+    private var balanceError: String? {
+        if !balanceIsValid { return "Enter a number, like 2480.15." }
+        return showMissingFields && balanceIsMissing ? "Enter the balance owed." : nil
+    }
+
+    private var minimumError: String? {
+        if !minimumIsValid { return "Enter a number." }
+        return showMissingFields && minimumIsMissing ? "Enter the minimum payment." : nil
+    }
+
+    private var dueDateError: String? {
+        if showDueDateError { return "Use MM / DD." }
+        return showMissingFields && dueDateIsMissing ? "Enter the due date." : nil
+    }
 
     private var canSave: Bool {
         balanceIsValid && minimumIsValid && aprIsValid && dueDateIsValid
@@ -224,15 +249,15 @@ private struct CardFormContent: View {
 
     private var fields: some View {
         VStack(alignment: .leading, spacing: 20) {
-            FormFieldContainer(title: "Balance owed", errorMessage: balanceIsValid ? nil : "Enter a number, like 2480.15.") {
-                numberField($balanceText, label: "Balance owed", placeholder: "0.00", prefix: "$", field: .balance, isValid: balanceIsValid)
+            FormFieldContainer(title: "Balance owed", errorMessage: balanceError) {
+                numberField($balanceText, label: "Balance owed", placeholder: "0.00", prefix: "$", field: .balance, isValid: balanceError == nil)
             }
 
             HStack(alignment: .top, spacing: 12) {
-                FormFieldContainer(title: "Minimum payment", errorMessage: minimumIsValid ? nil : "Enter a number.") {
-                    numberField($minimumText, label: "Minimum payment", placeholder: "0.00", prefix: "$", field: .minimum, isValid: minimumIsValid)
+                FormFieldContainer(title: "Minimum payment", errorMessage: minimumError) {
+                    numberField($minimumText, label: "Minimum payment", placeholder: "0.00", prefix: "$", field: .minimum, isValid: minimumError == nil)
                 }
-                FormFieldContainer(title: "Due date", errorMessage: showDueDateError ? "Use MM / DD." : nil) {
+                FormFieldContainer(title: "Due date", errorMessage: dueDateError) {
                     dueDateField
                 }
             }
@@ -312,7 +337,7 @@ private struct CardFormContent: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Pick due date from calendar")
         }
-        .inputBox(isFocused: focus == .due, hasError: showDueDateError)
+        .inputBox(isFocused: focus == .due, hasError: dueDateError != nil)
         .contentShape(Rectangle())
         .onTapGesture { focus = .due }
     }
@@ -320,7 +345,10 @@ private struct CardFormContent: View {
     private var actions: some View {
         VStack(spacing: 12) {
             Button(primaryTitle) {
-                saveAndContinue()
+                switch mode {
+                case .onboarding: complete()
+                case .edit: saveAndContinue()
+                }
             }
             .buttonStyle(.primary)
             .disabled(!canSave)
@@ -350,6 +378,24 @@ private struct CardFormContent: View {
         case .onboarding: return "Complete"
         case .edit: return "Save"
         }
+    }
+
+    /// "Complete": needs balance owed, minimum payment and due date. If one is empty it turns red and
+    /// the cursor goes to the first empty field. "Skip details for now" is the way to skip them all.
+    private func complete() {
+        guard !hasMissingRequiredFields else {
+            showMissingFields = true
+            if balanceIsMissing {
+                focus = .balance
+            } else if minimumIsMissing {
+                focus = .minimum
+            } else {
+                focus = .due
+            }
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            return
+        }
+        saveAndContinue()
     }
 
     private func saveAndContinue() {

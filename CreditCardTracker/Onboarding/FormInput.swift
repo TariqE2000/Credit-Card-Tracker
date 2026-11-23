@@ -34,6 +34,11 @@ enum FormInput {
         return trimmed.isEmpty || decimal(from: trimmed, locale: locale) != nil
     }
 
+    /// True when the field has nothing in it, or only spaces.
+    static func isBlank(_ text: String) -> Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     /// Shows typed due date digits as "12 / 14".
     static func dueDateDisplay(forDigits digits: String) -> String {
         digits.count <= 2 ? digits : "\(digits.prefix(2)) / \(digits.dropFirst(2))"
