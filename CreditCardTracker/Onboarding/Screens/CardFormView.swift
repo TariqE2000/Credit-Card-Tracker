@@ -74,8 +74,6 @@ private struct CardFormContent: View {
         balanceIsValid && minimumIsValid && aprIsValid && dueDateIsValid
     }
 
-    private var isLastCard: Bool { position >= total }
-
     // MARK: Body
 
     var body: some View {
@@ -348,7 +346,8 @@ private struct CardFormContent: View {
 
     private var primaryTitle: String {
         switch mode {
-        case .onboarding: return isLastCard ? "Review cards" : "Next card"
+        // Moves on to the next card, or to the review screen after the last one.
+        case .onboarding: return "Complete"
         case .edit: return "Save"
         }
     }
