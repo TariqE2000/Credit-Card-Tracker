@@ -17,7 +17,7 @@ struct OnboardingFlow: View {
     private func destination(for route: OnboardingRoute) -> some View {
         switch route {
         case .logIn:
-            ComingSoonView(title: "Log in")
+            LogInView()
         case .pickCards:
             ComingSoonView(title: "Pick your cards")
         case .cardForm, .editCard:
