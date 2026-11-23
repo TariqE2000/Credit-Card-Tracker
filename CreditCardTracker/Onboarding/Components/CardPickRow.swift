@@ -4,6 +4,8 @@ import SwiftUI
 struct CardPickRow: View {
     let card: CatalogCard
     let isSelected: Bool
+    /// A card the user already added. Shown ticked and dimmed, and it cannot be tapped.
+    var isLocked = false
     let action: () -> Void
 
     var body: some View {
@@ -39,8 +41,11 @@ struct CardPickRow: View {
             .contentShape(RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)
+        .disabled(isLocked)
+        .opacity(isLocked ? 0.6 : 1)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityHint(isLocked ? "Already added" : "")
     }
 }
 

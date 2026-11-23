@@ -17,11 +17,12 @@ struct CardFormView: View {
 
     var body: some View {
         if let card = store.card(withID: cardID) {
+            let progress = store.progress(for: cardID)
             CardFormContent(
                 card: card,
                 mode: mode,
-                position: store.position(of: cardID) ?? 1,
-                total: max(store.cards.count, 1)
+                position: progress.position,
+                total: progress.total
             )
         } else {
             // The card was just removed and the screen is on its way out.

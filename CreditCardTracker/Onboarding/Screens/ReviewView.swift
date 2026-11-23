@@ -80,10 +80,24 @@ struct ReviewView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Button("Confirm and finish") {
-                store.finishOnboarding()
+            VStack(spacing: 12) {
+                Button("Confirm and finish") {
+                    store.finishOnboarding()
+                }
+                .buttonStyle(.primary)
+
+                // Back to "Pick your cards" with the current cards ticked, to add more.
+                Button {
+                    store.startAddingCards()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Add another card")
+                    }
+                }
+                .buttonStyle(.secondary)
             }
-            .buttonStyle(.primary)
         }
         .padding(.horizontal, Theme.Metrics.screenPadding)
         .padding(.top, 12)
