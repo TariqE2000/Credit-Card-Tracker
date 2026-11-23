@@ -11,20 +11,22 @@ enum CardCatalog {
     private static let bankOfAmerica: UInt32 = 0x0C4A8F
     private static let apple: UInt32 = 0x4A4A52
 
+    // Logos load from LogoAPI.sh by website. Chase and Citi are not in its catalog yet, so those cards
+    // have no `logoDomain` and keep the colored badge.
     static let all: [CatalogCard] = [
         CatalogCard(id: "chase-freedom-unlimited", name: "Chase Freedom Unlimited", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
         CatalogCard(id: "chase-sapphire-preferred", name: "Chase Sapphire Preferred", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
         CatalogCard(id: "chase-freedom-flex", name: "Chase Freedom Flex", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
-        CatalogCard(id: "amex-gold-card", name: "American Express Gold Card", issuer: "American Express", badgeCode: "AX", badgeColorHex: amex),
-        CatalogCard(id: "amex-blue-cash-everyday", name: "Blue Cash Everyday", issuer: "American Express", badgeCode: "AX", badgeColorHex: amex),
-        CatalogCard(id: "capital-one-quicksilver", name: "Capital One Quicksilver", issuer: "Capital One", badgeCode: "C1", badgeColorHex: capitalOne),
-        CatalogCard(id: "capital-one-venture", name: "Capital One Venture", issuer: "Capital One", badgeCode: "C1", badgeColorHex: capitalOne),
+        CatalogCard(id: "amex-gold-card", name: "American Express Gold Card", issuer: "American Express", badgeCode: "AX", badgeColorHex: amex, logoDomain: "americanexpress.com"),
+        CatalogCard(id: "amex-blue-cash-everyday", name: "Blue Cash Everyday", issuer: "American Express", badgeCode: "AX", badgeColorHex: amex, logoDomain: "americanexpress.com"),
+        CatalogCard(id: "capital-one-quicksilver", name: "Capital One Quicksilver", issuer: "Capital One", badgeCode: "C1", badgeColorHex: capitalOne, logoDomain: "capitalone.com"),
+        CatalogCard(id: "capital-one-venture", name: "Capital One Venture", issuer: "Capital One", badgeCode: "C1", badgeColorHex: capitalOne, logoDomain: "capitalone.com"),
         CatalogCard(id: "citi-double-cash", name: "Citi Double Cash", issuer: "Citi", badgeCode: "CI", badgeColorHex: citi),
         CatalogCard(id: "citi-custom-cash", name: "Citi Custom Cash", issuer: "Citi", badgeCode: "CI", badgeColorHex: citi),
-        CatalogCard(id: "discover-it-cash-back", name: "Discover it Cash Back", issuer: "Discover", badgeCode: "DI", badgeColorHex: discover),
-        CatalogCard(id: "wells-fargo-active-cash", name: "Wells Fargo Active Cash", issuer: "Wells Fargo", badgeCode: "WF", badgeColorHex: wellsFargo),
-        CatalogCard(id: "bank-of-america-customized-cash", name: "Bank of America Customized Cash Rewards", issuer: "Bank of America", badgeCode: "BA", badgeColorHex: bankOfAmerica),
-        CatalogCard(id: "apple-card", name: "Apple Card", issuer: "Apple", badgeCode: "AP", badgeColorHex: apple),
+        CatalogCard(id: "discover-it-cash-back", name: "Discover it Cash Back", issuer: "Discover", badgeCode: "DI", badgeColorHex: discover, logoDomain: "discover.com"),
+        CatalogCard(id: "wells-fargo-active-cash", name: "Wells Fargo Active Cash", issuer: "Wells Fargo", badgeCode: "WF", badgeColorHex: wellsFargo, logoDomain: "wellsfargo.com"),
+        CatalogCard(id: "bank-of-america-customized-cash", name: "Bank of America Customized Cash Rewards", issuer: "Bank of America", badgeCode: "BA", badgeColorHex: bankOfAmerica, logoDomain: "bankofamerica.com"),
+        CatalogCard(id: "apple-card", name: "Apple Card", issuer: "Apple", badgeCode: "AP", badgeColorHex: apple, logoDomain: "apple.com"),
     ]
 
     static func card(withID id: String) -> CatalogCard? {

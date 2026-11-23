@@ -32,6 +32,13 @@ Onboarding flow, built one screen per pull request:
 
 The home screen has not been designed yet.
 
+## Issuer logos
+
+Logos come from [LogoAPI.sh](https://logoapi.sh): free, no key, no sign-up, no attribution, 2 million
+requests a month per site. A card's logo shows on a white tile in its badge once it has loaded; if it
+cannot load, the colored badge stays. Chase and Citi are not in LogoAPI.sh's catalog, so those cards keep
+the badge. To add a logo for another issuer, set `logoDomain` on its entry in `CardCatalog`.
+
 ## Placeholders to replace
 
 - Bundle ID `com.tariqe2000.creditcardtracker` in `project.yml`.
