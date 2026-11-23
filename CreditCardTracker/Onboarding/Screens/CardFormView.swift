@@ -376,7 +376,7 @@ private struct CardFormContent: View {
         switch mode {
         // Moves on to the next card, or to the review screen after the last one.
         case .onboarding: return "Save and continue"
-        case .edit: return "Save"
+        case .edit: return "Save and continue"
         }
     }
 
