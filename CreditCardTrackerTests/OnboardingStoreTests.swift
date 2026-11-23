@@ -51,30 +51,30 @@ final class CardDetailsTests: XCTestCase {
 
     func testTotalBalanceSkipsIncompleteCards() throws {
         let complete = TrackedCard(
-            catalogCard: try XCTUnwrap(CardCatalog.card(withID: "us-chase-freedom-unlimited")),
+            catalogCard: try XCTUnwrap(BuiltInIssuers.card(withID: "us-chase-freedom-unlimited")),
             details: CardDetails(balance: 2480.15, minimumPayment: 45, dueDate: DueDate(month: 12, day: 14), apr: 24.99)
         )
         let incomplete = TrackedCard(
-            catalogCard: try XCTUnwrap(CardCatalog.card(withID: "us-chase-sapphire-preferred")),
+            catalogCard: try XCTUnwrap(BuiltInIssuers.card(withID: "us-chase-sapphire-preferred")),
             details: CardDetails(balance: 900)
         )
         XCTAssertEqual([complete, incomplete].totalBalance, 2480.15)
     }
 }
 
-final class CardCatalogTests: XCTestCase {
+final class IssuerCatalogTests: XCTestCase {
     func testEmptyQueryReturnsEverything() {
-        XCTAssertEqual(CardCatalog.cards(matching: "  ").count, CardCatalog.all.count)
+        XCTAssertEqual(BuiltInIssuers.cards(matching: "  ").count, BuiltInIssuers.all.count)
     }
 
     func testSearchMatchesNameOrIssuer() {
-        XCTAssertTrue(CardCatalog.cards(matching: "sapphire").contains { $0.id == "us-chase-sapphire-preferred" })
-        XCTAssertTrue(CardCatalog.cards(matching: "american express").allSatisfy { $0.issuer == "American Express" })
-        XCTAssertTrue(CardCatalog.cards(matching: "zzzz").isEmpty)
+        XCTAssertTrue(BuiltInIssuers.cards(matching: "sapphire").contains { $0.id == "us-chase-sapphire-preferred" })
+        XCTAssertTrue(BuiltInIssuers.cards(matching: "american express").allSatisfy { $0.issuer == "American Express" })
+        XCTAssertTrue(BuiltInIssuers.cards(matching: "zzzz").isEmpty)
     }
 
     func testIDsAreUnique() {
-        XCTAssertEqual(Set(CardCatalog.all.map(\.id)).count, CardCatalog.all.count)
+        XCTAssertEqual(Set(BuiltInIssuers.all.map(\.id)).count, BuiltInIssuers.all.count)
     }
 }
 
@@ -82,8 +82,8 @@ final class CardCatalogTests: XCTestCase {
 
 @MainActor
 final class OnboardingStoreTests: XCTestCase {
-    private func card(_ id: String) throws -> CatalogCard {
-        try XCTUnwrap(CardCatalog.card(withID: id))
+    private func card(_ id: String) throws -> Issuer {
+        try XCTUnwrap(BuiltInIssuers.card(withID: id))
     }
 
     /// A store with two cards picked and the first card's form open.

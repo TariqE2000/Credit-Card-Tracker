@@ -84,11 +84,11 @@ How the app gets it:
 2. **Saved on the phone.** The result is saved as one small file (about 65 KB, in Application Support and
    left out of iCloud backups). Later launches show it instantly and do not download again.
 3. **Pinned to one release.** A tagged address never changes, so a mistake in opencard-db's newest data
-   cannot break the app. To get newer cards, change `CardCatalogSource.tag`, check that Pick cards still
+   cannot break the app. To get newer cards, change `IssuerCatalogSource.tag`, check that Pick cards still
    loads, and ship an update. Tags are listed on
    [their releases page](https://github.com/thedavidweng/opencard-db/releases).
 4. **If it fails.** With no internet on the very first launch, Pick cards shows a built-in list of 13
-   popular cards (`CardCatalog`) with a **Try again** button. **My card is not listed** always works.
+   popular cards (`BuiltInIssuers`) with a **Try again** button. **My card is not listed** always works.
    A list saved earlier stays on screen if a later download fails. A file with fewer than 50 US cards is
    treated as a failed download and is never saved.
 
@@ -136,10 +136,10 @@ To add a logo for another issuer, add its opencard-db issuer ID and website to `
 CreditCardTracker/
   App/            App entry point and RootView (onboarding until finished, then home)
   DesignSystem/   Theme (colors, sizes), buttons, card badge, logo, back button
-  Models/         CatalogCard, TrackedCard, CardDetails, DueDate
-                  Card list: CardCatalogStore (load, save, fall back), CardCatalogSource (pinned release),
-                  OpenCardMapper (file to cards), IssuerStyle (badges), CardCatalogCache, CardCatalogFetcher,
-                  CardCatalog (the 13 built-in cards)
+  Models/         Issuer, TrackedCard, CardDetails, DueDate
+                  Card list: IssuerCatalogStore (load, save, fall back), IssuerCatalogSource (pinned release),
+                  OpenCardMapper (file to cards), IssuerStyle (badges), IssuerCatalogCache, IssuerCatalogFetcher,
+                  BuiltInIssuers (the 13 built-in cards)
   Onboarding/
     OnboardingStore.swift   The one shared state object for the whole flow
     OnboardingFlow.swift    The NavigationStack and its routes

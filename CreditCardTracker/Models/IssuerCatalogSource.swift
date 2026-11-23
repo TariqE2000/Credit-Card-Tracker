@@ -7,7 +7,7 @@ import Foundation
 ///
 /// We pin one release tag. A tagged address never changes, so a mistake in their newest data cannot
 /// break the app. New cards reach the app when we change `tag` and ship an update.
-enum CardCatalogSource {
+enum IssuerCatalogSource {
     /// The opencard-db release the app reads.
     ///
     /// To update the list: pick a newer tag from https://github.com/thedavidweng/opencard-db/releases,
@@ -18,7 +18,7 @@ enum CardCatalogSource {
     static let repositoryURL = URL(string: "https://github.com/thedavidweng/opencard-db")!
 
     /// The file that holds every card (US, Canada and China). We keep only the US cards.
-    static func url(forTag tag: String = CardCatalogSource.tag) -> URL {
+    static func url(forTag tag: String = IssuerCatalogSource.tag) -> URL {
         URL(string: "https://cdn.jsdelivr.net/gh/thedavidweng/opencard-db@\(tag)/exports/cards-all.json")!
     }
 }

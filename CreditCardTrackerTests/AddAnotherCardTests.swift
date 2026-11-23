@@ -4,8 +4,8 @@ import XCTest
 /// "Add another card" on the review screen: pick more cards, fill in only the new ones, land back on review.
 @MainActor
 final class AddAnotherCardTests: XCTestCase {
-    private func card(_ id: String) throws -> CatalogCard {
-        try XCTUnwrap(CardCatalog.card(withID: id))
+    private func card(_ id: String) throws -> Issuer {
+        try XCTUnwrap(BuiltInIssuers.card(withID: id))
     }
 
     /// Two cards picked, the first one filled in, and the review screen open.

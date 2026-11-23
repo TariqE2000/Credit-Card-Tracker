@@ -114,7 +114,7 @@ struct ReviewCardRow: View {
     VStack(spacing: 12) {
         ReviewCardRow(
             card: TrackedCard(
-                catalogCard: CardCatalog.all[0],
+                catalogCard: BuiltInIssuers.all[0],
                 details: CardDetails(
                     balance: 2480.15,
                     minimumPayment: 45,
@@ -124,7 +124,7 @@ struct ReviewCardRow: View {
             ),
             onEdit: {}
         )
-        ReviewCardRow(card: TrackedCard(catalogCard: CardCatalog.all[1]), onEdit: {})
+        ReviewCardRow(card: TrackedCard(catalogCard: BuiltInIssuers.all[1]), onEdit: {})
     }
     .padding(24)
     .background(Theme.background)

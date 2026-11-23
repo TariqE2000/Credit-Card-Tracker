@@ -214,7 +214,7 @@ private struct CardFormContent: View {
                     TextField(
                         "",
                         text: nameBinding,
-                        prompt: Text(CatalogCard.defaultCustomName).foregroundStyle(Theme.textSecondary)
+                        prompt: Text(Issuer.defaultCustomName).foregroundStyle(Theme.textSecondary)
                     )
                     .font(.app(22, .bold))
                     .foregroundStyle(Theme.textPrimary)
@@ -444,8 +444,8 @@ private struct CardFormContent: View {
 @MainActor
 private func previewStore() -> OnboardingStore {
     let store = OnboardingStore()
-    store.toggleSelection(of: CardCatalog.all[0])
-    store.toggleSelection(of: CardCatalog.all[1])
+    store.toggleSelection(of: BuiltInIssuers.all[0])
+    store.toggleSelection(of: BuiltInIssuers.all[1])
     store.continueFromPickCards()
     return store
 }

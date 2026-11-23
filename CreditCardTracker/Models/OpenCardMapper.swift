@@ -1,13 +1,13 @@
 import Foundation
 
-enum CardCatalogError: Error, Equatable {
+enum IssuerCatalogError: Error, Equatable {
     /// The server answered with something other than a success code.
     case badStatus(Int)
     /// The file decoded, but it holds too few US cards to be the real list.
     case notEnoughCards(Int)
 }
 
-/// Turns opencard-db's `cards-all.json` into the app's list of `CatalogCard`s.
+/// Turns opencard-db's `cards-all.json` into the app's list of `Issuer`s.
 enum OpenCardMapper {
     /// The real file has hundreds of US cards. Fewer than this means we got something else (an error
     /// page, a changed file), so it is not used and not saved.
@@ -41,11 +41,11 @@ enum OpenCardMapper {
     ///
     /// All US cards are kept: personal and business, active and discontinued. People still carry cards
     /// that are no longer sold.
-    static func catalogCards(from data: Data, minimumCount: Int = minimumUSCards) throws -> [CatalogCard] {
+    static func catalogCards(from data: Data, minimumCount: Int = minimumUSCards) throws -> [Issuer] {
         let records = try JSONDecoder().decode([Lossy].self, from: data).compactMap(\.record)
 
         var seenIDs = Set<String>()
-        var entries: [(card: CatalogCard, issuerID: String)] = []
+        var entries: [(card: Issuer, issuerID: String)] = []
         for record in records where record.country == "us" {
             let id = record.id.trimmingCharacters(in: .whitespacesAndNewlines)
             let name = record.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,7 +53,7 @@ enum OpenCardMapper {
             guard !id.isEmpty, !name.isEmpty, !issuer.isEmpty, seenIDs.insert(id).inserted else { continue }
 
             let style = IssuerStyle.style(forCardID: id, issuerID: record.issuerID, issuerName: issuer)
-            let card = CatalogCard(
+            let card = Issuer(
                 id: id,
                 name: name,
                 issuer: issuer,
@@ -65,7 +65,7 @@ enum OpenCardMapper {
         }
 
         guard entries.count >= minimumCount else {
-            throw CardCatalogError.notEnoughCards(entries.count)
+            throw IssuerCatalogError.notEnoughCards(entries.count)
         }
 
         entries.sort { lhs, rhs in

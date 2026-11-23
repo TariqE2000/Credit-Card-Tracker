@@ -2,7 +2,7 @@ import SwiftUI
 
 /// One tappable card in the "Pick your cards" list: badge, name, issuer and a checkbox.
 struct CardPickRow: View {
-    let card: CatalogCard
+    let card: Issuer
     let isSelected: Bool
     /// A card the user already added. Shown ticked and dimmed, and it cannot be tapped.
     var isLocked = false
@@ -73,8 +73,8 @@ private struct Checkbox: View {
 
 #Preview("Rows") {
     VStack(spacing: 10) {
-        CardPickRow(card: CardCatalog.all[0], isSelected: true) {}
-        CardPickRow(card: CardCatalog.all[2], isSelected: false) {}
+        CardPickRow(card: BuiltInIssuers.all[0], isSelected: true) {}
+        CardPickRow(card: BuiltInIssuers.all[2], isSelected: false) {}
     }
     .padding(24)
     .background(Theme.background)

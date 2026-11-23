@@ -2,9 +2,9 @@ import Foundation
 
 /// A card the user can pick during onboarding, e.g. "Chase Sapphire Preferred".
 ///
-/// The full list is downloaded from opencard-db by `CardCatalogStore` and saved on the phone, which is
-/// why this type is `Codable`. A short built-in list in `CardCatalog` is used when it cannot load.
-struct CatalogCard: Identifiable, Hashable, Codable {
+/// The full list is downloaded from opencard-db by `IssuerCatalogStore` and saved on the phone, which is
+/// why this type is `Codable`. A short built-in list in `BuiltInIssuers` is used when it cannot load.
+struct Issuer: Identifiable, Hashable, Codable {
     /// Stable ID from opencard-db, e.g. "us-chase-sapphire-preferred".
     let id: String
     let name: String
@@ -59,7 +59,7 @@ extension LogoService {
     }
 }
 
-extension CatalogCard {
+extension Issuer {
     /// Where to load this card's issuer logo from. Nil when there is none to try.
     var logoURL: URL? {
         logoDomain.flatMap { LogoService.iconURL(forDomain: $0) }
@@ -70,7 +70,7 @@ extension CatalogCard {
 
 /// A card the user added with "My card is not listed". The user types its name on the card form,
 /// and the first word of that name is shown where a catalog card shows its issuer.
-extension CatalogCard {
+extension Issuer {
     static let customIDPrefix = "custom-"
     /// What an unnamed not-listed card is called.
     static let defaultCustomName = "Other card"
@@ -78,10 +78,10 @@ extension CatalogCard {
     var isCustom: Bool { id.hasPrefix(Self.customIDPrefix) }
 
     static func custom(
-        id: String = CatalogCard.customIDPrefix + UUID().uuidString,
+        id: String = Issuer.customIDPrefix + UUID().uuidString,
         name: String = ""
-    ) -> CatalogCard {
-        CatalogCard(id: id, name: name, issuer: firstWord(of: name) ?? "Not listed", badgeCode: "", badgeColorHex: 0x6B6B78)
+    ) -> Issuer {
+        Issuer(id: id, name: name, issuer: firstWord(of: name) ?? "Not listed", badgeCode: "", badgeColorHex: 0x6B6B78)
     }
 
     /// "Navy Federal" gives "Navy". Nil when there is no word yet.

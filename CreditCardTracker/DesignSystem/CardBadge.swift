@@ -59,7 +59,7 @@ struct CardBadge: View {
 }
 
 extension CardBadge {
-    init(card: CatalogCard, size: CGFloat = 40, isMuted: Bool = false) {
+    init(card: Issuer, size: CGFloat = 40, isMuted: Bool = false) {
         self.init(
             code: card.badgeCode,
             color: Color(hex: card.badgeColorHex),

@@ -22,12 +22,12 @@ enum OnboardingRoute: Hashable {
 /// and the details they typed in.
 @MainActor
 final class OnboardingStore: ObservableObject {
-    /// The cards the user can pick from. The app passes `CardCatalogStore.live()`. Without one, previews
+    /// The cards the user can pick from. The app passes `IssuerCatalogStore.live()`. Without one, previews
     /// and tests get the built-in starter cards and never touch the network or the disk.
-    let catalog: CardCatalogStore
+    let catalog: IssuerCatalogStore
 
-    init(catalog: CardCatalogStore? = nil) {
-        self.catalog = catalog ?? CardCatalogStore.builtIn()
+    init(catalog: IssuerCatalogStore? = nil) {
+        self.catalog = catalog ?? IssuerCatalogStore.builtIn()
     }
 
     @Published var path: [OnboardingRoute] = []
@@ -67,11 +67,11 @@ final class OnboardingStore: ObservableObject {
 
     var selectedCount: Int { selectedCatalogIDs.count }
 
-    func isSelected(_ card: CatalogCard) -> Bool {
+    func isSelected(_ card: Issuer) -> Bool {
         selectedCatalogIDs.contains(card.id)
     }
 
-    func toggleSelection(of card: CatalogCard) {
+    func toggleSelection(of card: Issuer) {
         if let index = selectedCatalogIDs.firstIndex(of: card.id) {
             selectedCatalogIDs.remove(at: index)
         } else {
@@ -83,7 +83,7 @@ final class OnboardingStore: ObservableObject {
 
     /// "My card is not listed": adds one more picked card. Its name is typed on its card form.
     func addNotListedCard() {
-        selectedCatalogIDs.append(CatalogCard.customIDPrefix + UUID().uuidString)
+        selectedCatalogIDs.append(Issuer.customIDPrefix + UUID().uuidString)
     }
 
     /// Builds `cards` from the picked catalog entries, keeping any details already typed for cards
@@ -116,7 +116,7 @@ final class OnboardingStore: ObservableObject {
     }
 
     /// True for a card the user already has. Only meaningful on the second pick screen.
-    func isLocked(_ card: CatalogCard) -> Bool {
+    func isLocked(_ card: Issuer) -> Bool {
         lockedCatalogIDs.contains(card.id)
     }
 
@@ -146,9 +146,9 @@ final class OnboardingStore: ObservableObject {
         }
     }
 
-    private func resolvedCard(withID id: String) -> CatalogCard? {
-        if let card = catalog.card(withID: id) ?? CardCatalog.card(withID: id) { return card }
-        return id.hasPrefix(CatalogCard.customIDPrefix) ? CatalogCard.custom(id: id) : nil
+    private func resolvedCard(withID id: String) -> Issuer? {
+        if let card = catalog.card(withID: id) ?? BuiltInIssuers.card(withID: id) { return card }
+        return id.hasPrefix(Issuer.customIDPrefix) ? Issuer.custom(id: id) : nil
     }
 
     // MARK: Card form
@@ -180,7 +180,7 @@ final class OnboardingStore: ObservableObject {
     /// Sets the name of a not-listed card as the user types it. Catalog cards keep their names.
     func setCustomName(_ name: String, for id: UUID) {
         guard let index = cards.firstIndex(where: { $0.id == id }), cards[index].catalogCard.isCustom else { return }
-        cards[index].catalogCard = CatalogCard.custom(id: cards[index].catalogCard.id, name: name)
+        cards[index].catalogCard = Issuer.custom(id: cards[index].catalogCard.id, name: name)
     }
 
     /// Goes to the next card's form, or to the review screen after the last card.

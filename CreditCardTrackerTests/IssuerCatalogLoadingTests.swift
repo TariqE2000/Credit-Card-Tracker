@@ -34,7 +34,7 @@ private func bigFile(count: Int = 60) throws -> Data {
     try jsonData((0..<count).map { cardRecord("us-card-\($0)", "Card \($0)") })
 }
 
-private let sampleCard = CatalogCard(
+private let sampleCard = Issuer(
     id: "us-sample",
     name: "Sample Card",
     issuer: "Sample Bank",
@@ -72,7 +72,7 @@ final class OpenCardMapperTests: XCTestCase {
     func testRefusesAListThatIsTooSmallToBeTheRealOne() throws {
         let data = try jsonData([cardRecord("us-a", "Card A")])
         XCTAssertThrowsError(try OpenCardMapper.catalogCards(from: data)) { error in
-            XCTAssertEqual(error as? CardCatalogError, .notEnoughCards(1))
+            XCTAssertEqual(error as? IssuerCatalogError, .notEnoughCards(1))
         }
     }
 
@@ -167,10 +167,10 @@ final class IssuerStyleTests: XCTestCase {
 
 // MARK: - Saved copy on the phone
 
-final class CardCatalogCacheTests: XCTestCase {
-    private func temporaryCache() -> FileCardCatalogCache {
+final class IssuerCatalogCacheTests: XCTestCase {
+    private func temporaryCache() -> FileIssuerCatalogCache {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        return FileCardCatalogCache(fileURL: folder.appendingPathComponent("us-cards.json"))
+        return FileIssuerCatalogCache(fileURL: folder.appendingPathComponent("us-cards.json"))
     }
 
     func testNothingSavedYet() {
@@ -179,14 +179,14 @@ final class CardCatalogCacheTests: XCTestCase {
 
     func testSavedListComesBackTheSame() {
         let cache = temporaryCache()
-        cache.save(CachedCatalog(source: "v1", cards: [sampleCard]))
-        XCTAssertEqual(cache.load(), CachedCatalog(source: "v1", cards: [sampleCard]))
+        cache.save(CachedIssuers(source: "v1", cards: [sampleCard]))
+        XCTAssertEqual(cache.load(), CachedIssuers(source: "v1", cards: [sampleCard]))
     }
 
     func testASecondSaveReplacesTheFirst() {
         let cache = temporaryCache()
-        cache.save(CachedCatalog(source: "v1", cards: [sampleCard]))
-        cache.save(CachedCatalog(source: "v2", cards: []))
+        cache.save(CachedIssuers(source: "v1", cards: [sampleCard]))
+        cache.save(CachedIssuers(source: "v2", cards: []))
         XCTAssertEqual(cache.load()?.source, "v2")
     }
 
@@ -204,7 +204,7 @@ final class CardCatalogCacheTests: XCTestCase {
 // MARK: - Store
 
 /// Answers with whatever it is told to, and remembers what was asked for.
-private final class StubFetcher: CardCatalogFetching, @unchecked Sendable {
+private final class StubFetcher: IssuerCatalogFetching, @unchecked Sendable {
     var result: Result<Data, Error>
     private(set) var requestedURLs: [URL] = []
 
@@ -218,21 +218,21 @@ private final class StubFetcher: CardCatalogFetching, @unchecked Sendable {
     }
 }
 
-private final class MemoryCache: CardCatalogCaching {
-    var saved: CachedCatalog?
-    init(_ saved: CachedCatalog? = nil) { self.saved = saved }
-    func load() -> CachedCatalog? { saved }
-    func save(_ catalog: CachedCatalog) { saved = catalog }
+private final class MemoryCache: IssuerCatalogCaching {
+    var saved: CachedIssuers?
+    init(_ saved: CachedIssuers? = nil) { self.saved = saved }
+    func load() -> CachedIssuers? { saved }
+    func save(_ catalog: CachedIssuers) { saved = catalog }
 }
 
 @MainActor
-final class CardCatalogStoreTests: XCTestCase {
+final class IssuerCatalogStoreTests: XCTestCase {
     private struct Offline: Error {}
 
     func testFirstLaunchDownloadsFiltersAndSavesTheList() async throws {
         let cache = MemoryCache()
         let fetcher = StubFetcher(.success(try bigFile()))
-        let store = CardCatalogStore(tag: "v9.9.9", cache: cache, fetcher: fetcher)
+        let store = IssuerCatalogStore(tag: "v9.9.9", cache: cache, fetcher: fetcher)
         XCTAssertEqual(store.phase, .loading)
         XCTAssertTrue(store.cards.isEmpty)
 
@@ -240,15 +240,15 @@ final class CardCatalogStoreTests: XCTestCase {
 
         XCTAssertEqual(store.phase, .ready)
         XCTAssertEqual(store.cards.count, 60)
-        XCTAssertEqual(fetcher.requestedURLs, [CardCatalogSource.url(forTag: "v9.9.9")])
+        XCTAssertEqual(fetcher.requestedURLs, [IssuerCatalogSource.url(forTag: "v9.9.9")])
         XCTAssertEqual(cache.saved?.source, "v9.9.9")
         XCTAssertEqual(cache.saved?.cards.count, 60)
     }
 
     func testAListSavedFromThePinnedReleaseIsUsedWithoutDownloading() async throws {
-        let cache = MemoryCache(CachedCatalog(source: "v9.9.9", cards: [sampleCard]))
+        let cache = MemoryCache(CachedIssuers(source: "v9.9.9", cards: [sampleCard]))
         let fetcher = StubFetcher(.success(try bigFile()))
-        let store = CardCatalogStore(tag: "v9.9.9", cache: cache, fetcher: fetcher)
+        let store = IssuerCatalogStore(tag: "v9.9.9", cache: cache, fetcher: fetcher)
 
         XCTAssertEqual(store.phase, .ready, "shown at once, before anything loads")
         XCTAssertEqual(store.cards, [sampleCard])
@@ -260,9 +260,9 @@ final class CardCatalogStoreTests: XCTestCase {
     }
 
     func testAListFromAnOlderReleaseIsShownThenReplaced() async throws {
-        let cache = MemoryCache(CachedCatalog(source: "v1", cards: [sampleCard]))
+        let cache = MemoryCache(CachedIssuers(source: "v1", cards: [sampleCard]))
         let fetcher = StubFetcher(.success(try bigFile()))
-        let store = CardCatalogStore(tag: "v2", cache: cache, fetcher: fetcher)
+        let store = IssuerCatalogStore(tag: "v2", cache: cache, fetcher: fetcher)
         XCTAssertEqual(store.cards, [sampleCard])
 
         await store.load()
@@ -274,11 +274,11 @@ final class CardCatalogStoreTests: XCTestCase {
     func testFailedFirstDownloadShowsTheBuiltInCardsAndRetryRecovers() async throws {
         let cache = MemoryCache()
         let fetcher = StubFetcher(.failure(Offline()))
-        let store = CardCatalogStore(tag: "v9.9.9", cache: cache, fetcher: fetcher)
+        let store = IssuerCatalogStore(tag: "v9.9.9", cache: cache, fetcher: fetcher)
 
         await store.load()
         XCTAssertEqual(store.phase, .unavailable)
-        XCTAssertEqual(store.cards, CardCatalog.all)
+        XCTAssertEqual(store.cards, BuiltInIssuers.all)
         XCTAssertNil(cache.saved, "nothing is saved after a failure")
 
         fetcher.result = .success(try bigFile())
@@ -290,9 +290,9 @@ final class CardCatalogStoreTests: XCTestCase {
     }
 
     func testFailedDownloadKeepsAnOlderSavedList() async throws {
-        let cache = MemoryCache(CachedCatalog(source: "v1", cards: [sampleCard]))
+        let cache = MemoryCache(CachedIssuers(source: "v1", cards: [sampleCard]))
         let fetcher = StubFetcher(.failure(Offline()))
-        let store = CardCatalogStore(tag: "v2", cache: cache, fetcher: fetcher)
+        let store = IssuerCatalogStore(tag: "v2", cache: cache, fetcher: fetcher)
 
         await store.load()
 
@@ -304,21 +304,21 @@ final class CardCatalogStoreTests: XCTestCase {
     func testADownloadThatIsNotTheRealListIsNotUsedOrSaved() async throws {
         let cache = MemoryCache()
         let tinyFile = try jsonData([cardRecord("us-a", "Card A")])
-        let store = CardCatalogStore(tag: "v9.9.9", cache: cache, fetcher: StubFetcher(.success(tinyFile)))
+        let store = IssuerCatalogStore(tag: "v9.9.9", cache: cache, fetcher: StubFetcher(.success(tinyFile)))
 
         await store.load()
 
         XCTAssertEqual(store.phase, .unavailable)
-        XCTAssertEqual(store.cards, CardCatalog.all)
+        XCTAssertEqual(store.cards, BuiltInIssuers.all)
         XCTAssertNil(cache.saved)
     }
 
     func testBuiltInStoreNeverDownloads() async {
-        let store = CardCatalogStore.builtIn()
+        let store = IssuerCatalogStore.builtIn()
         XCTAssertEqual(store.phase, .ready)
-        XCTAssertEqual(store.cards, CardCatalog.all)
+        XCTAssertEqual(store.cards, BuiltInIssuers.all)
         await store.load()
-        XCTAssertEqual(store.cards, CardCatalog.all)
+        XCTAssertEqual(store.cards, BuiltInIssuers.all)
     }
 
     func testLookupAndSearchUseTheLoadedList() async throws {
@@ -326,7 +326,7 @@ final class CardCatalogStoreTests: XCTestCase {
             cardRecord("us-chase-sapphire-preferred", "Chase Sapphire Preferred® Card"),
             cardRecord("us-citi-double-cash", "Citi Double Cash® Card", issuer: "Citi", issuerID: "citi"),
         ] + (0..<60).map { cardRecord("us-filler-\($0)", "Filler \($0)", issuer: "Filler Bank", issuerID: "filler") })
-        let store = CardCatalogStore(tag: "v9.9.9", cache: MemoryCache(), fetcher: StubFetcher(.success(data)))
+        let store = IssuerCatalogStore(tag: "v9.9.9", cache: MemoryCache(), fetcher: StubFetcher(.success(data)))
         await store.load()
 
         XCTAssertEqual(store.card(withID: "us-citi-double-cash")?.issuer, "Citi")
@@ -340,7 +340,7 @@ final class CardCatalogStoreTests: XCTestCase {
         // resolve, and it must still be recognized as already added.
         let cache = MemoryCache()
         let fetcher = StubFetcher(.failure(Offline()))
-        let catalog = CardCatalogStore(tag: "v9.9.9", cache: cache, fetcher: fetcher)
+        let catalog = IssuerCatalogStore(tag: "v9.9.9", cache: cache, fetcher: fetcher)
         let store = OnboardingStore(catalog: catalog)
         await catalog.load()
 

@@ -80,10 +80,10 @@ struct CardDetails: Hashable {
 struct TrackedCard: Identifiable, Hashable {
     let id: UUID
     /// Changes only for a not-listed card, when the user types its name.
-    var catalogCard: CatalogCard
+    var catalogCard: Issuer
     var details: CardDetails
 
-    init(id: UUID = UUID(), catalogCard: CatalogCard, details: CardDetails = CardDetails()) {
+    init(id: UUID = UUID(), catalogCard: Issuer, details: CardDetails = CardDetails()) {
         self.id = id
         self.catalogCard = catalogCard
         self.details = details

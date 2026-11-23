@@ -3,40 +3,40 @@ import XCTest
 
 final class NotListedCardModelTests: XCTestCase {
     func testNotListedCardsAreMarkedCustom() {
-        XCTAssertTrue(CatalogCard.custom().isCustom)
-        XCTAssertFalse(CardCatalog.all[0].isCustom)
-        XCTAssertEqual(CatalogCard.custom().issuer, "Not listed")
+        XCTAssertTrue(Issuer.custom().isCustom)
+        XCTAssertFalse(BuiltInIssuers.all[0].isCustom)
+        XCTAssertEqual(Issuer.custom().issuer, "Not listed")
     }
 
     func testEachNotListedCardGetsItsOwnID() {
-        XCTAssertNotEqual(CatalogCard.custom().id, CatalogCard.custom().id)
+        XCTAssertNotEqual(Issuer.custom().id, Issuer.custom().id)
     }
 
     func testUnnamedCardIsCalledOtherCard() {
-        XCTAssertEqual(CatalogCard.custom().displayName, "Other card")
-        XCTAssertEqual(CatalogCard.custom(name: "   ").displayName, "Other card")
+        XCTAssertEqual(Issuer.custom().displayName, "Other card")
+        XCTAssertEqual(Issuer.custom(name: "   ").displayName, "Other card")
     }
 
     func testLabelIsTheFirstWordOfTheName() {
-        XCTAssertEqual(CatalogCard.custom(name: "Navy Federal").issuer, "Navy")
-        XCTAssertEqual(CatalogCard.custom(name: "  Costco  ").issuer, "Costco")
-        XCTAssertEqual(CatalogCard.custom(name: "").issuer, "Not listed")
-        XCTAssertEqual(CatalogCard.custom(name: "   ").issuer, "Not listed")
+        XCTAssertEqual(Issuer.custom(name: "Navy Federal").issuer, "Navy")
+        XCTAssertEqual(Issuer.custom(name: "  Costco  ").issuer, "Costco")
+        XCTAssertEqual(Issuer.custom(name: "").issuer, "Not listed")
+        XCTAssertEqual(Issuer.custom(name: "   ").issuer, "Not listed")
     }
 
     func testNamedCardShowsItsTrimmedName() {
-        XCTAssertEqual(CatalogCard.custom(name: "  Navy Federal ").displayName, "Navy Federal")
+        XCTAssertEqual(Issuer.custom(name: "  Navy Federal ").displayName, "Navy Federal")
     }
 
     func testCatalogCardsKeepTheirNames() {
-        XCTAssertEqual(CardCatalog.all[0].displayName, CardCatalog.all[0].name)
+        XCTAssertEqual(BuiltInIssuers.all[0].displayName, BuiltInIssuers.all[0].name)
     }
 }
 
 @MainActor
 final class NotListedCardStoreTests: XCTestCase {
-    private func card(_ id: String) throws -> CatalogCard {
-        try XCTUnwrap(CardCatalog.card(withID: id))
+    private func card(_ id: String) throws -> Issuer {
+        try XCTUnwrap(BuiltInIssuers.card(withID: id))
     }
 
     func testTappingNotListedIncreasesTheCount() throws {

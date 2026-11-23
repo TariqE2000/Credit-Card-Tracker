@@ -5,12 +5,12 @@ import Foundation
 ///
 /// How it behaves:
 /// 1. If a list is already saved on the phone, it is shown right away. When it came from the release
-///    the app is pinned to (`CardCatalogSource.tag`), no download happens at all.
+///    the app is pinned to (`IssuerCatalogSource.tag`), no download happens at all.
 /// 2. Otherwise the list is downloaded from the CDN, filtered to US cards, saved on the phone and shown.
 /// 3. If the download fails and nothing is saved, the built-in starter cards are shown with a "try
 ///    again" option, so the user can still pick a card (or use "My card is not listed").
 @MainActor
-final class CardCatalogStore: ObservableObject {
+final class IssuerCatalogStore: ObservableObject {
     enum Phase: Equatable {
         /// Waiting for the first download. There is nothing to show yet.
         case loading
@@ -20,25 +20,25 @@ final class CardCatalogStore: ObservableObject {
         case unavailable
     }
 
-    @Published private(set) var cards: [CatalogCard]
+    @Published private(set) var cards: [Issuer]
     @Published private(set) var phase: Phase
 
     private let tag: String
-    private let cache: (any CardCatalogCaching)?
-    private let fetcher: (any CardCatalogFetching)?
-    private let builtInCards: [CatalogCard]
+    private let cache: (any IssuerCatalogCaching)?
+    private let fetcher: (any IssuerCatalogFetching)?
+    private let builtInCards: [Issuer]
 
     /// The release tag of the list that is showing. Nil while showing the built-in cards.
     private var shownSource: String?
-    private var index: [String: CatalogCard] = [:]
+    private var index: [String: Issuer] = [:]
     private var loadTask: Task<Void, Never>?
 
     /// Without a `fetcher` this store never downloads and just shows `builtInCards`.
     init(
-        tag: String = CardCatalogSource.tag,
-        cache: (any CardCatalogCaching)?,
-        fetcher: (any CardCatalogFetching)?,
-        builtInCards: [CatalogCard] = CardCatalog.all
+        tag: String = IssuerCatalogSource.tag,
+        cache: (any IssuerCatalogCaching)?,
+        fetcher: (any IssuerCatalogFetching)?,
+        builtInCards: [Issuer] = BuiltInIssuers.all
     ) {
         self.tag = tag
         self.cache = cache
@@ -60,24 +60,24 @@ final class CardCatalogStore: ObservableObject {
     }
 
     /// The store the app uses: saves to the phone and downloads from the CDN.
-    static func live() -> CardCatalogStore {
-        CardCatalogStore(cache: FileCardCatalogCache(), fetcher: URLSessionCardFetcher())
+    static func live() -> IssuerCatalogStore {
+        IssuerCatalogStore(cache: FileIssuerCatalogCache(), fetcher: URLSessionCatalogFetcher())
     }
 
     /// The built-in starter cards only, with no downloads and nothing saved. For previews and tests.
-    static func builtIn() -> CardCatalogStore {
-        CardCatalogStore(cache: nil, fetcher: nil)
+    static func builtIn() -> IssuerCatalogStore {
+        IssuerCatalogStore(cache: nil, fetcher: nil)
     }
 
     // MARK: Looking cards up
 
-    func card(withID id: String) -> CatalogCard? {
+    func card(withID id: String) -> Issuer? {
         index[id]
     }
 
     /// Cards whose name or issuer contains `query`. An empty query returns the whole list.
-    func cards(matching query: String) -> [CatalogCard] {
-        CardCatalog.search(cards, matching: query)
+    func cards(matching query: String) -> [Issuer] {
+        BuiltInIssuers.search(cards, matching: query)
     }
 
     // MARK: Loading
@@ -104,7 +104,7 @@ final class CardCatalogStore: ObservableObject {
     private func download() async {
         guard let fetcher else { return }
         do {
-            let data = try await fetcher.data(from: CardCatalogSource.url(forTag: tag))
+            let data = try await fetcher.data(from: IssuerCatalogSource.url(forTag: tag))
             // Reading 2 MB of JSON takes a moment, so it is done away from the main thread.
             let fresh = try await Task.detached(priority: .userInitiated) {
                 try OpenCardMapper.catalogCards(from: data)
@@ -114,7 +114,7 @@ final class CardCatalogStore: ObservableObject {
             rebuildIndex()
             phase = .ready
             shownSource = tag
-            cache?.save(CachedCatalog(source: tag, cards: fresh))
+            cache?.save(CachedIssuers(source: tag, cards: fresh))
         } catch {
             // A list saved earlier (from an older release) stays on screen. With nothing saved,
             // fall back to the built-in starter cards.

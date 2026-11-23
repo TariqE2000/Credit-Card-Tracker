@@ -14,11 +14,11 @@ struct PickCardsView: View {
     var mode: PickCardsMode = .firstPick
 
     @EnvironmentObject private var store: OnboardingStore
-    @EnvironmentObject private var catalog: CardCatalogStore
+    @EnvironmentObject private var catalog: IssuerCatalogStore
     @State private var query = ""
     @State private var isRetrying = false
 
-    private var results: [CatalogCard] {
+    private var results: [Issuer] {
         catalog.cards(matching: query)
     }
 
@@ -186,7 +186,7 @@ struct PickCardsView: View {
 
     /// The credit that opencard-db's license (CC BY 4.0) asks for.
     private var creditLine: some View {
-        Link(destination: CardCatalogSource.repositoryURL) {
+        Link(destination: IssuerCatalogSource.repositoryURL) {
             Text("Card list from opencard-db (CC BY 4.0)")
                 .font(.app(12))
                 .foregroundStyle(Theme.textSecondary)
@@ -247,7 +247,7 @@ struct PickCardsView: View {
         PickCardsView()
     }
     .environmentObject(previewStore())
-    .environmentObject(CardCatalogStore.builtIn())
+    .environmentObject(IssuerCatalogStore.builtIn())
     .preferredColorScheme(.light)
 }
 
@@ -256,7 +256,7 @@ struct PickCardsView: View {
         PickCardsView()
     }
     .environmentObject(previewStore())
-    .environmentObject(CardCatalogStore.builtIn())
+    .environmentObject(IssuerCatalogStore.builtIn())
     .preferredColorScheme(.dark)
 }
 
@@ -265,7 +265,7 @@ struct PickCardsView: View {
         PickCardsView(mode: .addMore)
     }
     .environmentObject(addingMoreStore())
-    .environmentObject(CardCatalogStore.builtIn())
+    .environmentObject(IssuerCatalogStore.builtIn())
     .preferredColorScheme(.light)
 }
 
@@ -282,7 +282,7 @@ private func addingMoreStore() -> OnboardingStore {
 @MainActor
 private func previewStore() -> OnboardingStore {
     let store = OnboardingStore()
-    store.toggleSelection(of: CardCatalog.all[0])
-    store.toggleSelection(of: CardCatalog.all[1])
+    store.toggleSelection(of: BuiltInIssuers.all[0])
+    store.toggleSelection(of: BuiltInIssuers.all[1])
     return store
 }
