@@ -12,8 +12,8 @@ final class AddAnotherCardTests: XCTestCase {
     private func storeOnReview() throws -> OnboardingStore {
         let store = OnboardingStore()
         store.signIn(with: .apple)
-        store.toggleSelection(of: try card("chase-freedom-unlimited"))
-        store.toggleSelection(of: try card("chase-sapphire-preferred"))
+        store.toggleSelection(of: try card("us-chase-freedom-unlimited"))
+        store.toggleSelection(of: try card("us-chase-sapphire-preferred"))
         store.continueFromPickCards()
         store.saveDetails(
             CardDetails(balance: 100, minimumPayment: 25, dueDate: DueDate(month: 12, day: 14), apr: nil),
@@ -30,10 +30,10 @@ final class AddAnotherCardTests: XCTestCase {
         store.startAddingCards()
 
         XCTAssertEqual(store.path.last, .addCards)
-        XCTAssertTrue(store.isSelected(try card("chase-freedom-unlimited")))
-        XCTAssertTrue(store.isSelected(try card("chase-sapphire-preferred")))
-        XCTAssertTrue(store.isLocked(try card("chase-freedom-unlimited")))
-        XCTAssertFalse(store.isLocked(try card("apple-card")))
+        XCTAssertTrue(store.isSelected(try card("us-chase-freedom-unlimited")))
+        XCTAssertTrue(store.isSelected(try card("us-chase-sapphire-preferred")))
+        XCTAssertTrue(store.isLocked(try card("us-chase-freedom-unlimited")))
+        XCTAssertFalse(store.isLocked(try card("us-apple-card")))
         XCTAssertEqual(store.newPickCount, 0)
     }
 
@@ -41,7 +41,7 @@ final class AddAnotherCardTests: XCTestCase {
         let store = try storeOnReview()
         store.startAddingCards()
 
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         store.addNotListedCard()
 
         XCTAssertEqual(store.newPickCount, 2)
@@ -52,14 +52,14 @@ final class AddAnotherCardTests: XCTestCase {
         let store = try storeOnReview()
         let firstCard = store.cards[0]
         store.startAddingCards()
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         store.addNotListedCard()
 
         store.continueFromAddCards()
 
         XCTAssertEqual(store.cards.count, 4)
         XCTAssertEqual(store.cards[0], firstCard)
-        XCTAssertEqual(store.cards[2].catalogCard.id, "apple-card")
+        XCTAssertEqual(store.cards[2].catalogCard.id, "us-apple-card")
         XCTAssertTrue(store.cards[3].catalogCard.isCustom)
         XCTAssertEqual(store.path.last, .cardForm(store.cards[2].id))
 
@@ -72,7 +72,7 @@ final class AddAnotherCardTests: XCTestCase {
     func testFinishingTheLastNewCardReturnsToTheReviewScreen() throws {
         let store = try storeOnReview()
         store.startAddingCards()
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         store.addNotListedCard()
         store.continueFromAddCards()
         let first = store.cards[2].id
@@ -92,7 +92,7 @@ final class AddAnotherCardTests: XCTestCase {
     func testRemovingANewCardMovesOnToTheNextOne() throws {
         let store = try storeOnReview()
         store.startAddingCards()
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         store.addNotListedCard()
         store.continueFromAddCards()
         let first = store.cards[2].id
@@ -111,7 +111,7 @@ final class AddAnotherCardTests: XCTestCase {
     func testStartingAgainForgetsPicksThatWereNotContinued() throws {
         let store = try storeOnReview()
         store.startAddingCards()
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         XCTAssertEqual(store.newPickCount, 1)
 
         // Back to the review screen without continuing, then "Add another card" again.
@@ -119,14 +119,14 @@ final class AddAnotherCardTests: XCTestCase {
         store.startAddingCards()
 
         XCTAssertEqual(store.newPickCount, 0)
-        XCTAssertFalse(store.isSelected(try card("apple-card")))
+        XCTAssertFalse(store.isSelected(try card("us-apple-card")))
         XCTAssertEqual(store.cards.count, 2)
     }
 
     func testFirstPassFormsStillCountEveryCard() throws {
         let store = OnboardingStore()
-        store.toggleSelection(of: try card("chase-freedom-unlimited"))
-        store.toggleSelection(of: try card("chase-sapphire-preferred"))
+        store.toggleSelection(of: try card("us-chase-freedom-unlimited"))
+        store.toggleSelection(of: try card("us-chase-sapphire-preferred"))
         store.continueFromPickCards()
 
         XCTAssertEqual(store.progress(for: store.cards[0].id).position, 1)

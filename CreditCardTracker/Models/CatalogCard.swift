@@ -2,10 +2,10 @@ import Foundation
 
 /// A card the user can pick during onboarding, e.g. "Chase Sapphire Preferred".
 ///
-/// For now these come from the hard-coded `CardCatalog`. Later they can come from a free card
-/// catalog (CardFacts / opencard-db).
-struct CatalogCard: Identifiable, Hashable {
-    /// Stable ID, e.g. "chase-sapphire-preferred".
+/// The full list is downloaded from opencard-db by `CardCatalogStore` and saved on the phone, which is
+/// why this type is `Codable`. A short built-in list in `CardCatalog` is used when it cannot load.
+struct CatalogCard: Identifiable, Hashable, Codable {
+    /// Stable ID from opencard-db, e.g. "us-chase-sapphire-preferred".
     let id: String
     let name: String
     let issuer: String

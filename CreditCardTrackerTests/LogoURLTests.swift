@@ -8,15 +8,15 @@ final class LogoURLTests: XCTestCase {
     }
 
     func testListedIssuersHaveALogoURL() throws {
-        let card = try XCTUnwrap(CardCatalog.card(withID: "capital-one-quicksilver"))
+        let card = try XCTUnwrap(CardCatalog.card(withID: "us-capital-one-quicksilver"))
         XCTAssertEqual(card.logoURL?.host, "logoapi.sh")
         XCTAssertEqual(card.logoURL?.path, "/icon/capitalone.com.png")
     }
 
     func testIssuersMissingFromTheServiceKeepTheirBadge() throws {
         // Chase and Citi are not in LogoAPI.sh, so no request is made for them.
-        XCTAssertNil(try XCTUnwrap(CardCatalog.card(withID: "chase-sapphire-preferred")).logoURL)
-        XCTAssertNil(try XCTUnwrap(CardCatalog.card(withID: "citi-double-cash")).logoURL)
+        XCTAssertNil(try XCTUnwrap(CardCatalog.card(withID: "us-chase-sapphire-preferred")).logoURL)
+        XCTAssertNil(try XCTUnwrap(CardCatalog.card(withID: "us-citi-double-cash")).logoURL)
     }
 
     func testNotListedCardsHaveNoLogo() {

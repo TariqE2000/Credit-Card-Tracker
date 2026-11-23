@@ -1,6 +1,11 @@
 import Foundation
 
-/// Temporary hard-coded card list for the "Pick your cards" screen.
+/// A short built-in list of popular cards. It is only used while the full list cannot be loaded (the
+/// first launch with no internet), and in previews and tests. The full list comes from
+/// `CardCatalogStore`.
+///
+/// Each ID is the card's ID in opencard-db, so a card picked from this list is still recognized as
+/// the same card once the full list has loaded.
 enum CardCatalog {
     private static let chase: UInt32 = 0x1F5BC4
     private static let amex: UInt32 = 0x2A6F8E
@@ -14,30 +19,36 @@ enum CardCatalog {
     // Logos load from LogoAPI.sh by website. Chase and Citi are not in its catalog yet, so those cards
     // have no `logoDomain` and keep the colored badge.
     static let all: [CatalogCard] = [
-        CatalogCard(id: "chase-freedom-unlimited", name: "Chase Freedom Unlimited", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
-        CatalogCard(id: "chase-sapphire-preferred", name: "Chase Sapphire Preferred", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
-        CatalogCard(id: "chase-freedom-flex", name: "Chase Freedom Flex", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
-        CatalogCard(id: "amex-gold-card", name: "American Express Gold Card", issuer: "American Express", badgeCode: "AX", badgeColorHex: amex, logoDomain: "americanexpress.com"),
-        CatalogCard(id: "amex-blue-cash-everyday", name: "Blue Cash Everyday", issuer: "American Express", badgeCode: "AX", badgeColorHex: amex, logoDomain: "americanexpress.com"),
-        CatalogCard(id: "capital-one-quicksilver", name: "Capital One Quicksilver", issuer: "Capital One", badgeCode: "C1", badgeColorHex: capitalOne, logoDomain: "capitalone.com"),
-        CatalogCard(id: "capital-one-venture", name: "Capital One Venture", issuer: "Capital One", badgeCode: "C1", badgeColorHex: capitalOne, logoDomain: "capitalone.com"),
-        CatalogCard(id: "citi-double-cash", name: "Citi Double Cash", issuer: "Citi", badgeCode: "CI", badgeColorHex: citi),
-        CatalogCard(id: "citi-custom-cash", name: "Citi Custom Cash", issuer: "Citi", badgeCode: "CI", badgeColorHex: citi),
-        CatalogCard(id: "discover-it-cash-back", name: "Discover it Cash Back", issuer: "Discover", badgeCode: "DI", badgeColorHex: discover, logoDomain: "discover.com"),
-        CatalogCard(id: "wells-fargo-active-cash", name: "Wells Fargo Active Cash", issuer: "Wells Fargo", badgeCode: "WF", badgeColorHex: wellsFargo, logoDomain: "wellsfargo.com"),
-        CatalogCard(id: "bank-of-america-customized-cash", name: "Bank of America Customized Cash Rewards", issuer: "Bank of America", badgeCode: "BA", badgeColorHex: bankOfAmerica, logoDomain: "bankofamerica.com"),
-        CatalogCard(id: "apple-card", name: "Apple Card", issuer: "Apple", badgeCode: "AP", badgeColorHex: apple, logoDomain: "apple.com"),
+        CatalogCard(id: "us-chase-freedom-unlimited", name: "Chase Freedom Unlimited", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
+        CatalogCard(id: "us-chase-sapphire-preferred", name: "Chase Sapphire Preferred", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
+        CatalogCard(id: "us-chase-freedom-flex", name: "Chase Freedom Flex", issuer: "Chase", badgeCode: "CH", badgeColorHex: chase),
+        CatalogCard(id: "us-amex-gold", name: "American Express Gold Card", issuer: "American Express", badgeCode: "AX", badgeColorHex: amex, logoDomain: "americanexpress.com"),
+        CatalogCard(id: "us-amex-blue-cash-everyday", name: "Blue Cash Everyday", issuer: "American Express", badgeCode: "AX", badgeColorHex: amex, logoDomain: "americanexpress.com"),
+        CatalogCard(id: "us-capital-one-quicksilver", name: "Capital One Quicksilver", issuer: "Capital One", badgeCode: "C1", badgeColorHex: capitalOne, logoDomain: "capitalone.com"),
+        CatalogCard(id: "us-capital-one-venture", name: "Capital One Venture", issuer: "Capital One", badgeCode: "C1", badgeColorHex: capitalOne, logoDomain: "capitalone.com"),
+        CatalogCard(id: "us-citi-double-cash", name: "Citi Double Cash", issuer: "Citi", badgeCode: "CI", badgeColorHex: citi),
+        CatalogCard(id: "us-citi-custom-cash", name: "Citi Custom Cash", issuer: "Citi", badgeCode: "CI", badgeColorHex: citi),
+        CatalogCard(id: "us-discover-it-cash-back", name: "Discover it Cash Back", issuer: "Discover", badgeCode: "DI", badgeColorHex: discover, logoDomain: "discover.com"),
+        CatalogCard(id: "us-wells-fargo-active-cash", name: "Wells Fargo Active Cash", issuer: "Wells Fargo", badgeCode: "WF", badgeColorHex: wellsFargo, logoDomain: "wellsfargo.com"),
+        CatalogCard(id: "us-bank-of-america-customized-cash-rewards", name: "Bank of America Customized Cash Rewards", issuer: "Bank of America", badgeCode: "BA", badgeColorHex: bankOfAmerica, logoDomain: "bankofamerica.com"),
+        CatalogCard(id: "us-apple-card", name: "Apple Card", issuer: "Apple", badgeCode: "AP", badgeColorHex: apple, logoDomain: "apple.com"),
     ]
 
     static func card(withID id: String) -> CatalogCard? {
         all.first { $0.id == id }
     }
 
-    /// Cards whose name or issuer contains `query` (ignoring case and accents). An empty query returns everything.
+    /// Cards in the built-in list whose name or issuer contains `query`.
     static func cards(matching query: String) -> [CatalogCard] {
+        search(all, matching: query)
+    }
+
+    /// The cards in `cards` whose name or issuer contains `query` (ignoring case and accents). An empty
+    /// query returns all of them.
+    static func search(_ cards: [CatalogCard], matching query: String) -> [CatalogCard] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return all }
-        return all.filter {
+        guard !trimmed.isEmpty else { return cards }
+        return cards.filter {
             $0.name.localizedStandardContains(trimmed) || $0.issuer.localizedStandardContains(trimmed)
         }
     }

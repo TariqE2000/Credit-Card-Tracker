@@ -14,10 +14,16 @@ struct PickCardsView: View {
     var mode: PickCardsMode = .firstPick
 
     @EnvironmentObject private var store: OnboardingStore
+    @EnvironmentObject private var catalog: CardCatalogStore
     @State private var query = ""
+    @State private var isRetrying = false
 
     private var results: [CatalogCard] {
-        CardCatalog.cards(matching: query)
+        catalog.cards(matching: query)
+    }
+
+    private var isLoadingFirstList: Bool {
+        catalog.phase == .loading && catalog.cards.isEmpty
     }
 
     var body: some View {
@@ -94,6 +100,14 @@ struct PickCardsView: View {
     private var cardList: some View {
         ScrollView {
             LazyVStack(spacing: 10) {
+                if catalog.phase == .unavailable {
+                    unavailableNotice
+                }
+
+                if isLoadingFirstList {
+                    loadingNotice
+                }
+
                 ForEach(results) { card in
                     CardPickRow(
                         card: card,
@@ -104,7 +118,7 @@ struct PickCardsView: View {
                     }
                 }
 
-                if results.isEmpty {
+                if results.isEmpty && !isLoadingFirstList {
                     Text("No cards match “\(query)”.")
                         .font(.app(15))
                         .foregroundStyle(Theme.textSecondary)
@@ -112,11 +126,74 @@ struct PickCardsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 32)
                 }
+
+                if catalog.phase == .ready && !catalog.cards.isEmpty {
+                    creditLine
+                }
             }
             .padding(.horizontal, Theme.Metrics.screenPadding)
             .padding(.vertical, 4)
         }
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    /// Shown for the very first launch while the list downloads (a second or two on a normal connection).
+    private var loadingNotice: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("Loading cards…")
+                .font(.app(15))
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 32)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The download failed and nothing was saved, so only the built-in starter cards are showing.
+    private var unavailableNotice: some View {
+        HStack(spacing: 12) {
+            Text("Couldn't load the full card list. Showing popular cards.")
+                .font(.app(13))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+
+            Button(isRetrying ? "Trying…" : "Try again") {
+                isRetrying = true
+                Task {
+                    await catalog.retry()
+                    isRetrying = false
+                }
+            }
+            .font(.app(13, .semibold))
+            .foregroundStyle(Theme.accentText)
+            .disabled(isRetrying)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(
+            Theme.surface,
+            in: RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous)
+                .strokeBorder(Theme.border, lineWidth: 1)
+        )
+    }
+
+    /// The credit that opencard-db's license (CC BY 4.0) asks for.
+    private var creditLine: some View {
+        Link(destination: CardCatalogSource.repositoryURL) {
+            Text("Card list from opencard-db (CC BY 4.0)")
+                .font(.app(12))
+                .foregroundStyle(Theme.textSecondary)
+                .underline()
+        }
+        .padding(.top, 12)
+        .padding(.bottom, 8)
     }
 
     private var bottomBar: some View {
@@ -170,6 +247,7 @@ struct PickCardsView: View {
         PickCardsView()
     }
     .environmentObject(previewStore())
+    .environmentObject(CardCatalogStore.builtIn())
     .preferredColorScheme(.light)
 }
 
@@ -178,6 +256,7 @@ struct PickCardsView: View {
         PickCardsView()
     }
     .environmentObject(previewStore())
+    .environmentObject(CardCatalogStore.builtIn())
     .preferredColorScheme(.dark)
 }
 
@@ -186,6 +265,7 @@ struct PickCardsView: View {
         PickCardsView(mode: .addMore)
     }
     .environmentObject(addingMoreStore())
+    .environmentObject(CardCatalogStore.builtIn())
     .preferredColorScheme(.light)
 }
 

@@ -51,11 +51,11 @@ final class CardDetailsTests: XCTestCase {
 
     func testTotalBalanceSkipsIncompleteCards() throws {
         let complete = TrackedCard(
-            catalogCard: try XCTUnwrap(CardCatalog.card(withID: "chase-freedom-unlimited")),
+            catalogCard: try XCTUnwrap(CardCatalog.card(withID: "us-chase-freedom-unlimited")),
             details: CardDetails(balance: 2480.15, minimumPayment: 45, dueDate: DueDate(month: 12, day: 14), apr: 24.99)
         )
         let incomplete = TrackedCard(
-            catalogCard: try XCTUnwrap(CardCatalog.card(withID: "chase-sapphire-preferred")),
+            catalogCard: try XCTUnwrap(CardCatalog.card(withID: "us-chase-sapphire-preferred")),
             details: CardDetails(balance: 900)
         )
         XCTAssertEqual([complete, incomplete].totalBalance, 2480.15)
@@ -68,7 +68,7 @@ final class CardCatalogTests: XCTestCase {
     }
 
     func testSearchMatchesNameOrIssuer() {
-        XCTAssertTrue(CardCatalog.cards(matching: "sapphire").contains { $0.id == "chase-sapphire-preferred" })
+        XCTAssertTrue(CardCatalog.cards(matching: "sapphire").contains { $0.id == "us-chase-sapphire-preferred" })
         XCTAssertTrue(CardCatalog.cards(matching: "american express").allSatisfy { $0.issuer == "American Express" })
         XCTAssertTrue(CardCatalog.cards(matching: "zzzz").isEmpty)
     }
@@ -90,8 +90,8 @@ final class OnboardingStoreTests: XCTestCase {
     private func storeWithTwoCards() throws -> OnboardingStore {
         let store = OnboardingStore()
         store.signIn(with: .apple)
-        store.toggleSelection(of: try card("chase-freedom-unlimited"))
-        store.toggleSelection(of: try card("chase-sapphire-preferred"))
+        store.toggleSelection(of: try card("us-chase-freedom-unlimited"))
+        store.toggleSelection(of: try card("us-chase-sapphire-preferred"))
         store.continueFromPickCards()
         return store
     }
@@ -105,7 +105,7 @@ final class OnboardingStoreTests: XCTestCase {
 
     func testToggleSelection() throws {
         let store = OnboardingStore()
-        let chase = try card("chase-freedom-flex")
+        let chase = try card("us-chase-freedom-flex")
         store.toggleSelection(of: chase)
         XCTAssertTrue(store.isSelected(chase))
         XCTAssertEqual(store.selectedCount, 1)
@@ -143,7 +143,7 @@ final class OnboardingStoreTests: XCTestCase {
         store.saveDetails(details, for: store.cards[0].id)
 
         // Pick a third card, then continue again.
-        store.toggleSelection(of: try card("apple-card"))
+        store.toggleSelection(of: try card("us-apple-card"))
         store.continueFromPickCards()
 
         XCTAssertEqual(store.cards.count, 3)

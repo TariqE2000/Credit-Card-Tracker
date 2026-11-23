@@ -22,6 +22,14 @@ enum OnboardingRoute: Hashable {
 /// and the details they typed in.
 @MainActor
 final class OnboardingStore: ObservableObject {
+    /// The cards the user can pick from. The app passes `CardCatalogStore.live()`. Without one, previews
+    /// and tests get the built-in starter cards and never touch the network or the disk.
+    let catalog: CardCatalogStore
+
+    init(catalog: CardCatalogStore? = nil) {
+        self.catalog = catalog ?? CardCatalogStore.builtIn()
+    }
+
     @Published var path: [OnboardingRoute] = []
     @Published private(set) var isSignedIn = false
     @Published private(set) var hasFinishedOnboarding = false
@@ -139,7 +147,7 @@ final class OnboardingStore: ObservableObject {
     }
 
     private func resolvedCard(withID id: String) -> CatalogCard? {
-        if let card = CardCatalog.card(withID: id) { return card }
+        if let card = catalog.card(withID: id) ?? CardCatalog.card(withID: id) { return card }
         return id.hasPrefix(CatalogCard.customIDPrefix) ? CatalogCard.custom(id: id) : nil
     }
 
