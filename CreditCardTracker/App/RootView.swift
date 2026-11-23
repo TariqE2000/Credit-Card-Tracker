@@ -1,17 +1,12 @@
 import SwiftUI
 
-/// Decides what the app shows. The onboarding flow plugs in here in the next pull requests.
+/// Decides what the app shows. For now that is always the onboarding flow.
 struct RootView: View {
+    @StateObject private var store = OnboardingStore()
+
     var body: some View {
-        ZStack {
-            Theme.background.ignoresSafeArea()
-            VStack(spacing: 16) {
-                AppLogo()
-                Text("Credit Card Tracker")
-                    .font(.app(22, .bold))
-                    .foregroundStyle(Theme.textPrimary)
-            }
-        }
+        OnboardingFlow()
+            .environmentObject(store)
     }
 }
 
