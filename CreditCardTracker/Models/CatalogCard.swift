@@ -13,6 +13,36 @@ struct CatalogCard: Identifiable, Hashable {
     let badgeCode: String
     /// Badge color as 0xRRGGBB. Kept as a number so the model has no UI dependency.
     let badgeColorHex: UInt32
+    /// The issuer's website, used to look up its logo, e.g. "capitalone.com". Nil when the logo service
+    /// does not have the issuer; the colored badge is shown instead.
+    var logoDomain: String? = nil
+}
+
+// MARK: - Issuer logos
+
+/// Issuer logos come from LogoAPI.sh: free, no key, no sign-up and no attribution.
+enum LogoService {
+    /// The square icon for a website, as a PNG (an image view on iOS cannot draw SVG).
+    /// `fallback=404` makes a missing logo come back as an error, so the app shows its own colored
+    /// badge instead of a stand-in picture. `size` snaps to 128, 256, 512 or 1024.
+    static func iconURL(forDomain domain: String, size: Int = 256) -> URL? {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "logoapi.sh"
+        components.path = "/icon/\(domain).png"
+        components.queryItems = [
+            URLQueryItem(name: "size", value: String(size)),
+            URLQueryItem(name: "fallback", value: "404"),
+        ]
+        return components.url
+    }
+}
+
+extension CatalogCard {
+    /// Where to load this card's issuer logo from. Nil when there is none to try.
+    var logoURL: URL? {
+        logoDomain.flatMap { LogoService.iconURL(forDomain: $0) }
+    }
 }
 
 // MARK: - Cards that are not listed

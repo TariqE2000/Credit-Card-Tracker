@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Rounded square with the issuer abbreviation ("CH", "AX", "C1").
+/// Rounded square with the issuer abbreviation ("CH", "AX", "C1"). When the issuer's logo is available
+/// it appears on a white tile over the badge once it has loaded; if it cannot load, the badge stays.
 struct CardBadge: View {
     let code: String
     var color: Color
@@ -9,8 +10,13 @@ struct CardBadge: View {
     var isMuted = false
     /// An SF Symbol shown instead of the letters, on a gray badge (used for cards that are not listed).
     var systemImage: String?
+    /// The issuer's logo. Not shown on the gray badge of a card with no details.
+    var logoURL: URL?
 
     private var isGray: Bool { isMuted || systemImage != nil }
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
+    }
 
     var body: some View {
         Group {
@@ -24,10 +30,22 @@ struct CardBadge: View {
         }
         .foregroundStyle(isGray ? Theme.textSecondary : Color.white)
         .frame(width: size, height: size)
-        .background(
-            isGray ? Theme.mutedBadge : color,
-            in: RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
-        )
+        .background(isGray ? Theme.mutedBadge : color, in: shape)
+        .overlay {
+            if let logoURL {
+                AsyncImage(url: logoURL, transaction: Transaction(animation: .easeIn(duration: 0.2))) { phase in
+                    if case .success(let image) = phase {
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .padding(size * 0.16)
+                            .frame(width: size, height: size)
+                            .background(Color.white, in: shape)
+                            .overlay(shape.strokeBorder(Theme.border, lineWidth: 1))
+                    }
+                }
+            }
+        }
         .accessibilityHidden(true)
     }
 }
@@ -39,7 +57,8 @@ extension CardBadge {
             color: Color(hex: card.badgeColorHex),
             size: size,
             isMuted: isMuted,
-            systemImage: card.isCustom ? "creditcard" : nil
+            systemImage: card.isCustom ? "creditcard" : nil,
+            logoURL: isMuted ? nil : card.logoURL
         )
     }
 }
