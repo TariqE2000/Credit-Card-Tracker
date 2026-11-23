@@ -44,6 +44,7 @@ private struct CardFormContent: View {
     @State private var dueDigits: String
     @State private var aprText: String
     @State private var showRemoveConfirmation = false
+    @State private var showDatePicker = false
     @FocusState private var focus: Field?
 
     private enum Field: Hashable {
@@ -108,6 +109,9 @@ private struct CardFormContent: View {
                 Spacer()
                 Button("Done") { focus = nil }
             }
+        }
+        .sheet(isPresented: $showDatePicker) {
+            DueDatePickerSheet(digits: $dueDigits)
         }
         .confirmationDialog(
             "Remove \(card.catalogCard.displayName)?",
@@ -295,10 +299,19 @@ private struct CardFormContent: View {
             .focused($focus, equals: .due)
             .accessibilityLabel("Due date, month and day")
 
-            Image(systemName: "calendar")
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.textSecondary)
-                .accessibilityHidden(true)
+            // Opens a calendar to pick the date instead of typing it.
+            Button {
+                focus = nil
+                showDatePicker = true
+            } label: {
+                Image(systemName: "calendar")
+                    .font(.system(size: 15))
+                    .foregroundStyle(showDatePicker ? Theme.accent : Theme.textSecondary)
+                    .frame(width: 32, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Pick due date from calendar")
         }
         .inputBox(isFocused: focus == .due, hasError: showDueDateError)
         .contentShape(Rectangle())
