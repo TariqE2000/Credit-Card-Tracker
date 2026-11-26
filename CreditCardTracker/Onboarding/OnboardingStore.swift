@@ -42,6 +42,10 @@ final class OnboardingStore: ObservableObject {
     /// is open for now; it is saved with the cards once accounts are built. It wears off by itself, because
     /// once that due day has passed it no longer matches the coming one.
     @Published private(set) var paidDueDates: [UUID: Date] = [:]
+    /// For each card, the latest due day that is dealt with: the day was marked paid, or it had already passed
+    /// when the due day was entered. Every later due day that has passed shows as a missed payment, until
+    /// "Mark paid" moves this forward. Kept only while the app is open for now, like `paidDueDates`.
+    @Published private(set) var settledDueDates: [UUID: Date] = [:]
 
     /// Catalog IDs of the cards the user already had when they tapped "Add another card". They show
     /// as ticked and cannot be changed on the second pick screen.
@@ -209,15 +213,41 @@ final class OnboardingStore: ObservableObject {
         return (index + 1, max(cards.count, 1))
     }
 
-    func saveDetails(_ details: CardDetails, for id: UUID) {
+    /// Saves what the user typed for a card. The first time a due day is entered (and when its day of the month
+    /// changes), the due days that already passed are counted as dealt with. The app cannot know about them,
+    /// and a card added today should not start out with a missed payment.
+    func saveDetails(_ details: CardDetails, for id: UUID, today: Date = Date(), calendar: Calendar = .current) {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
+        let before = cards[index].details.dueDate
         cards[index].details = details
+
+        guard let dueDate = details.dueDate else {
+            settledDueDates[id] = nil
+            return
+        }
+        if settledDueDates[id] == nil || before?.day != dueDate.day {
+            settledDueDates[id] = dueDate.previousDue(before: today, calendar: calendar).map { calendar.startOfDay(for: $0) }
+        }
     }
 
     /// Marks a card's payment for `dueDate` as paid. The home screen then moves on to the next month's due day.
     func markPaid(_ id: UUID, dueDate: Date, calendar: Calendar = .current) {
         guard cards.contains(where: { $0.id == id }) else { return }
-        paidDueDates[id] = calendar.startOfDay(for: dueDate)
+        let day = calendar.startOfDay(for: dueDate)
+        // The earlier paid day is about to be replaced. Keep it as dealt with, so "Mark unpaid" later
+        // does not make that month look missed.
+        if let earlier = paidDueDates[id], earlier < day {
+            settledDueDates[id] = max(settledDueDates[id] ?? earlier, earlier)
+        }
+        paidDueDates[id] = day
+    }
+
+    /// "Mark paid" on a card with missed payments: every missed day is now dealt with, in one tap. The coming
+    /// payment is left as it is, so the card still shows its next due day.
+    func clearMissed(_ item: DashboardCard, calendar: Calendar = .current) {
+        guard let latest = item.missedDueDates.last, cards.contains(where: { $0.id == item.id }) else { return }
+        let day = calendar.startOfDay(for: latest)
+        settledDueDates[item.id] = max(settledDueDates[item.id] ?? day, day)
     }
 
     /// Takes back "Mark paid". On a card sheet this is "Mark unpaid": the due day comes back.
@@ -226,9 +256,14 @@ final class OnboardingStore: ObservableObject {
     }
 
     /// The button on a card's sheet: "Mark paid" when the coming payment is not marked yet, "Mark unpaid"
-    /// when it is. Returns true when the card is now marked as paid.
+    /// when it is. A card with missed payments comes first: "Mark paid" clears them all and does not touch the
+    /// coming payment. Returns true when the coming payment is now marked as paid.
     @discardableResult
     func togglePaid(_ item: DashboardCard, calendar: Calendar = .current) -> Bool {
+        if item.isMissed {
+            clearMissed(item, calendar: calendar)
+            return false
+        }
         if item.isPaid {
             undoPaid(item.id)
             return false
@@ -269,6 +304,7 @@ final class OnboardingStore: ObservableObject {
         let removed = cards.remove(at: index)
         selectedCatalogIDs.removeAll { $0 == removed.catalogCard.id }
         paidDueDates[id] = nil
+        settledDueDates[id] = nil
 
         if cards.isEmpty {
             // Nothing left: back to picking cards. In the home screen's sheet that is the screen it opened on.

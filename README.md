@@ -86,6 +86,15 @@ pay this month. Pressing and holding a card on the home screen offers the same. 
 balance you entered. It wears off by itself once the due day has passed, and for now it is only remembered
 while the app is open.
 
+**Missed payments.** If a due day passes and the payment was never marked paid, the card shows a red
+**"Missed Nov 20 · 6 days ago"** line with "Next due Dec 20" under it. The app cannot see your bank account, so the
+sheet says you *may* have missed it, and **Mark paid** clears it. A card is always one row, even if it missed
+several months: the line reads "2 payments missed", the sheet lists the days, and one tap on Mark paid clears
+them all and leaves the coming payment as it is. In the summary box, **Missed** replaces "Next due" and adds up
+each card's minimum payment once, and sorting by due date puts these cards first. A card added today is not
+flagged for due days that had already passed, and a due day that is today is not missed until tomorrow.
+Like Mark paid, this is only remembered while the app is open.
+
 Pay links are a hand-made list in `Home/PayLinks.swift`. Each entry holds the lender's name and its page
 together, so the button always names the lender it opens ("Pay Chase" opens Chase, "Pay Citi" opens Citi).
 A co-branded card pays the lender that issued it: an Amazon, United or Marriott card issued by Chase says
@@ -122,7 +131,8 @@ cards as the home screen.
 
 - **Pay buttons for more lenders.** Only the 16 lenders above have a link. Each link needs to be checked
   by hand, because lenders move their sign-in pages.
-- **Saving "paid".** Mark paid is forgotten when the app closes, like the cards themselves.
+- **Saving "paid" and "missed".** Mark paid, and which due days count as missed, are forgotten when the app closes,
+  like the cards themselves.
 - **Real sign-in.** The plan is Supabase Auth with Sign in with Apple and Google. The code has
   `TODO(supabase)` markers where the token exchange goes.
 - **Saving your data.** Everything lives in memory. If you quit the app, your cards are gone. The plan is

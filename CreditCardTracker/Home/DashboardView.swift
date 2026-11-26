@@ -36,7 +36,7 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var screen: some View {
-        let data = DashboardData(cards: store.cards, sortedBy: sort, paid: store.paidDueDates)
+        let data = DashboardData(cards: store.cards, sortedBy: sort, paid: store.paidDueDates, settled: store.settledDueDates)
 
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -112,6 +112,12 @@ struct DashboardView: View {
     }
 
     private func markPaid(_ item: DashboardCard) {
+        // A card with missed payments: "Mark paid" clears them first. The coming payment stays as it is,
+        // so there is nothing for "Undo" to bring back.
+        if item.isMissed {
+            store.clearMissed(item)
+            return
+        }
         store.markPaid(item.id, dueDate: item.nextDueDate)
         withAnimation { justPaid = PaidNotice(id: item.id, name: item.card.catalogCard.displayName) }
     }
@@ -282,21 +288,26 @@ private struct SummaryCard: View {
             HStack(alignment: .top, spacing: 12) {
                 stat("Total minimums", data.totalMinimums.usd)
                 stat("Due in \(DashboardData.dueSoonDays) days", data.dueSoonTotal.usd)
-                stat("Next due", data.nextDue?.dueOnText ?? "–")
+                if data.missedCount > 0 {
+                    // Replaces "Next due" while a payment is missed. Each card's minimum counts once.
+                    stat("Missed", data.missedTotal.usd, valueColor: Theme.danger)
+                } else {
+                    stat("Next due", data.nextDue?.dueOnText ?? "–")
+                }
             }
         }
         .padding(20)
         .dashboardCardStyle()
     }
 
-    private func stat(_ title: String, _ value: String) -> some View {
+    private func stat(_ title: String, _ value: String, valueColor: Color = Theme.textPrimary) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.app(12))
                 .foregroundStyle(Theme.textSecondary)
             Text(value)
                 .font(.app(16, .semibold))
-                .foregroundStyle(Theme.textPrimary)
+                .foregroundStyle(valueColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -462,7 +473,7 @@ private struct DashboardCardRow: View {
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                dueLine
+                DueLine(item: item)
             }
 
             Spacer(minLength: 8)
@@ -477,39 +488,6 @@ private struct DashboardCardRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-    }
-
-    /// "Due Nov 28 · in 2 days", or "Paid · next due Dec 28" once this month's payment is marked paid.
-    @ViewBuilder
-    private var dueLine: some View {
-        if item.isPaid {
-            HStack(spacing: 4) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.accentText)
-                    .accessibilityHidden(true)
-                Text("Paid · next due \(item.dueOnText)")
-                    .font(.app(13))
-                    .foregroundStyle(Theme.textSecondary)
-            }
-        } else {
-            HStack(spacing: 0) {
-                Text("Due \(item.dueOnText) · ")
-                    .font(.app(13))
-                    .foregroundStyle(Theme.textSecondary)
-                Text(item.whenText)
-                    .font(.app(13, item.urgency == .calm ? .regular : .semibold))
-                    .foregroundStyle(whenColor)
-            }
-        }
-    }
-
-    private var whenColor: Color {
-        switch item.urgency {
-        case .urgent: return Theme.danger
-        case .soon: return Theme.accentText
-        case .calm: return Theme.textSecondary
-        }
     }
 
     /// Under the balance: the minimum payment, or the bank or interest rate when the list is sorted by those.

@@ -79,9 +79,13 @@ private struct CardTile: View {
     let onEdit: () -> Void
     let onPay: (URL) -> Void
 
-    private var chipText: String { item.isPaid ? "Paid" : item.whenText }
+    private var chipText: String {
+        if item.isMissed { return "Missed" }
+        return item.isPaid ? "Paid" : item.whenText
+    }
 
     private var chipColors: (background: Color, text: Color) {
+        if item.isMissed { return (Theme.danger.opacity(0.12), Theme.danger) }
         if item.isPaid { return (Theme.field, Theme.textSecondary) }
         switch item.urgency {
         case .urgent: return (Theme.danger.opacity(0.12), Theme.danger)
@@ -122,7 +126,7 @@ private struct CardTile: View {
                     Text("Min \(item.minimumPayment.usd)")
                         .font(.app(13))
                         .foregroundStyle(Theme.textSecondary)
-                    Text(item.isPaid ? "Next due \(item.dueOnText)" : "Due \(item.dueOnText)")
+                    Text(item.isPaid || item.isMissed ? "Next due \(item.dueOnText)" : "Due \(item.dueOnText)")
                         .font(.app(13))
                         .foregroundStyle(Theme.textSecondary)
                 }
