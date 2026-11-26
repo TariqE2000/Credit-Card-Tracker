@@ -14,12 +14,26 @@ struct DashboardView: View {
     @State private var editing: EditTarget?
     /// The card just marked as paid, so the "Undo" bar can offer to take it back for a few seconds.
     @State private var justPaid: PaidNotice?
+    /// True while the Views page is open.
+    @State private var showViews = false
 
     private var sort: CardSort {
         CardSort(rawValue: sortName) ?? .dueDate
     }
 
+    /// The home screen sits in a navigation stack so "Views" can open its page on top.
     var body: some View {
+        NavigationStack {
+            screen
+                .navigationDestination(isPresented: $showViews) {
+                    ViewsPage()
+                }
+                .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    @ViewBuilder
+    private var screen: some View {
         let data = DashboardData(cards: store.cards, sortedBy: sort, paid: store.paidDueDates)
 
         ScrollView {
@@ -124,8 +138,32 @@ struct DashboardView: View {
 
             Spacer(minLength: 8)
 
-            addButton
+            HStack(spacing: 8) {
+                viewsButton
+                addButton
+            }
         }
+    }
+
+    /// "Views": opens the page with the calendar, tiles and other ways to see the cards.
+    private var viewsButton: some View {
+        Button {
+            showViews = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 15, weight: .medium))
+                Text("Views")
+                    .font(.app(14, .semibold))
+            }
+            .foregroundStyle(Theme.accentText)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(Theme.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.border, lineWidth: 1))
+        }
+        .accessibilityLabel("Views")
+        .accessibilityHint("Calendar, tiles and other ways to see your cards")
     }
 
     /// The round "+" at the top right. Opens the card picker in a sheet.
@@ -152,7 +190,7 @@ struct DashboardView: View {
 
                 Spacer(minLength: 8)
 
-                sortMenu
+                SortMenu(sortName: $sortName)
             }
 
             ForEach(data.cards) { item in
@@ -173,9 +211,18 @@ struct DashboardView: View {
             }
         }
     }
+}
 
-    /// "Due date ⌄". Tapping it opens the list of sorts, with a check next to the current one.
-    private var sortMenu: some View {
+/// "Due date ⌄". Tapping it opens the list of sorts, with a check next to the current one. Used above the
+/// card list on the home screen and in the Tiles view; both share the choice, which is kept on the phone.
+struct SortMenu: View {
+    @Binding var sortName: String
+
+    private var sort: CardSort {
+        CardSort(rawValue: sortName) ?? .dueDate
+    }
+
+    var body: some View {
         Menu {
             Picker("Sort cards by", selection: $sortName) {
                 ForEach(CardSort.allCases) { option in
@@ -562,13 +609,13 @@ private struct PaidUndoBar: View {
 // MARK: - Editing a card
 
 /// Names the card to edit. `sheet(item:)` needs something Identifiable.
-private struct EditTarget: Identifiable {
+struct EditTarget: Identifiable {
     let id: UUID
 }
 
 /// The card form in a sheet, the same form as "Edit" on the review screen. Saving or the back arrow
 /// closes it. If the card is removed from inside the form, the sheet closes too.
-private struct EditCardSheet: View {
+struct EditCardSheet: View {
     let cardID: UUID
 
     @EnvironmentObject private var store: OnboardingStore
@@ -585,7 +632,7 @@ private struct EditCardSheet: View {
 }
 
 /// A row that is a button: the whole row is tappable and dims a little while pressed.
-private struct RowButtonStyle: ButtonStyle {
+struct RowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .contentShape(Rectangle())
@@ -595,7 +642,7 @@ private struct RowButtonStyle: ButtonStyle {
 
 // MARK: - Shared look
 
-private extension View {
+extension View {
     /// White surface with a thin border, like the cards on the review screen.
     func dashboardCardStyle() -> some View {
         background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous))
