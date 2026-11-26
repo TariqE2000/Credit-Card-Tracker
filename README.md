@@ -8,8 +8,8 @@ If you carry several credit cards, the numbers that matter (what you owe, the mi
 is due) are scattered across a different app or statement for each issuer. Credit Card Tracker puts them on
 one screen so you can see your total balance and what is due next without logging in to anything.
 
-> **Status: early MVP.** The onboarding flow and the home screen, with Pay, Mark paid, adding a card and the
-> first two views, are built. Other views (chart and more), real sign-in and saving your data are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
+> **Status: early MVP.** The onboarding flow and the home screen, with Pay, Mark paid, adding a card and four
+> views (calendar, tiles, by bank, by week), are built. Other views (chart and more), real sign-in and saving your data are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
 
 ## How it works
 
@@ -100,14 +100,17 @@ cards as the home screen.
   every month, every month shows them. "Still ahead this month" adds up the minimums left.
 - **Tiles** shows each card as a tile, two to a row, in the order of the same sort button the home screen
   has.
+- **By bank** groups the cards under their bank, soonest due first. Each bank shows its card count, total
+  balance and total minimum, a line for each card, and a "Pay Chase" link when the bank has one.
+- **By week** lists what is due each week (Sunday to Saturday in the US): "This week", "Next week", then the
+  dates. Each week adds up its minimum payments. Weeks with nothing due are left out.
 
 ## What is not built yet
 
 - **Pay buttons for more lenders.** Only the 16 lenders above have a link. Each link needs to be checked
   by hand, because lenders move their sign-in pages.
 - **Saving "paid".** Mark paid is forgotten when the app closes, like the cards themselves.
-- **More ways to see your cards.** By bank, by week, a balance chart and highest interest first are
-  designed but not built.
+- **More ways to see your cards.** A balance chart and highest interest first are designed but not built.
 - **Real sign-in.** The plan is Supabase Auth with Sign in with Apple and Google. The code has
   `TODO(supabase)` markers where the token exchange goes.
 - **Saving your data.** Everything lives in memory. If you quit the app, your cards are gone. The plan is

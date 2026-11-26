@@ -527,7 +527,7 @@ private struct DashboardCardRow: View {
 }
 
 /// A card that is missing details: dashed outline, gray badge, and a note that it is not in the totals.
-private struct IncompleteCardRow: View {
+struct IncompleteCardRow: View {
     let card: TrackedCard
     let onEdit: () -> Void
 

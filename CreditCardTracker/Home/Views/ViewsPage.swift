@@ -4,6 +4,8 @@ import SwiftUI
 enum ViewMode: String, CaseIterable, Identifiable {
     case calendar
     case tiles
+    case byBank
+    case byWeek
 
     var id: String { rawValue }
 
@@ -11,6 +13,8 @@ enum ViewMode: String, CaseIterable, Identifiable {
         switch self {
         case .calendar: return "Calendar"
         case .tiles: return "Tiles"
+        case .byBank: return "By bank"
+        case .byWeek: return "By week"
         }
     }
 }
@@ -145,6 +149,18 @@ struct ViewsPage: View {
                 TilesModeView(
                     data: data,
                     sortName: $sortName,
+                    onEdit: { editing = EditTarget(id: $0) },
+                    onPay: { openURL($0) }
+                )
+            case .byBank:
+                ByBankModeView(
+                    data: data,
+                    onEdit: { editing = EditTarget(id: $0) },
+                    onPay: { openURL($0) }
+                )
+            case .byWeek:
+                ByWeekModeView(
+                    data: data,
                     onEdit: { editing = EditTarget(id: $0) },
                     onPay: { openURL($0) }
                 )
