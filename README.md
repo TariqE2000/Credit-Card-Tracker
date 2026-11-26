@@ -8,9 +8,8 @@ If you carry several credit cards, the numbers that matter (what you owe, the mi
 is due) are scattered across a different app or statement for each issuer. Credit Card Tracker puts them on
 one screen so you can see your total balance and what is due next without logging in to anything.
 
-> **Status: early MVP.** The onboarding flow and the home screen, with Pay and Mark paid, are built. Extra
-> views (calendar, chart and more), adding a card from the home screen, real sign-in and saving your data
-> are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
+> **Status: early MVP.** The onboarding flow and the home screen, with Pay, Mark paid and adding a card, are
+> built. Extra views (calendar, chart and more), real sign-in and saving your data are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
 
 ## How it works
 
@@ -65,7 +64,12 @@ of the totals, with an "Add details" link.
 Tap any card to open its details in the same form used during setup. You can change the balance, minimum
 payment, due date and interest rate, or remove the card.
 
-**Pay and Mark paid.** The card due within a week gets a banner with two buttons. **Pay** opens the bank's
+**Add a card.** The round **+** at the top right opens "Pick your cards" in a sheet, with the cards you
+already have ticked and locked. Tick new ones (or "My card is not listed"), then fill in a form for each new
+card, and the sheet closes. It is the same screens as "Add another card" on the review screen. If you close
+the sheet part way, cards that already got a form stay in the list, without details, ready for "Add details".
+
+**Pay and Mark paid.** The card due within a week gets a banner with two buttons under its name. **Pay** opens the bank's
 own web page (for example "Pay Chase"), where you sign in and pay. It opens the way any link opens on an
 iPhone: in Safari, or in the bank's app if you have it and the bank has set that link up to open there.
 The app never sees your bank password or card number and never makes a payment itself. **Mark paid** moves
@@ -94,8 +98,6 @@ month is used.
 - **Saving "paid".** Mark paid is forgotten when the app closes, like the cards themselves.
 - **More ways to see your cards.** Calendar, tiles, by bank, by week, a balance chart and highest interest
   first are designed but not built.
-- **Adding a card from the home screen.** You can edit or remove a card there, but picking a new one is
-  still only part of the first-time setup.
 - **Real sign-in.** The plan is Supabase Auth with Sign in with Apple and Google. The code has
   `TODO(supabase)` markers where the token exchange goes.
 - **Saving your data.** Everything lives in memory. If you quit the app, your cards are gone. The plan is
