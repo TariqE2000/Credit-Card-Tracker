@@ -8,8 +8,8 @@ If you carry several credit cards, the numbers that matter (what you owe, the mi
 is due) are scattered across a different app or statement for each issuer. Credit Card Tracker puts them on
 one screen so you can see your total balance and what is due next without logging in to anything.
 
-> **Status: early MVP.** The onboarding flow and the home screen, with Pay, Mark paid and adding a card, are
-> built. Extra views (calendar, chart and more), real sign-in and saving your data are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
+> **Status: early MVP.** The onboarding flow and the home screen, with Pay, Mark paid, adding a card and the
+> first two views, are built. Other views (chart and more), real sign-in and saving your data are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
 
 ## How it works
 
@@ -91,13 +91,23 @@ A due date repeats every month, so the home screen works out the next date from 
 entered as "Dec 14" is due on the 14th of every month. In a month too short for that day, the last day of the
 month is used.
 
+**Views.** The **Views** button at the top of the home screen opens a page with a row of chips for the
+different ways to see your cards. The page remembers the chip you used last. All of them read the same
+cards as the home screen.
+
+- **Calendar** shows one month with a dot on every day a card is due, in the color of the card's bank.
+  Tap a day to list the cards due on it, and use the arrows to move between months. Because due dates repeat
+  every month, every month shows them. "Still ahead this month" adds up the minimums left.
+- **Tiles** shows each card as a tile, two to a row, in the order of the same sort button the home screen
+  has.
+
 ## What is not built yet
 
 - **Pay buttons for more lenders.** Only the 16 lenders above have a link. Each link needs to be checked
   by hand, because lenders move their sign-in pages.
 - **Saving "paid".** Mark paid is forgotten when the app closes, like the cards themselves.
-- **More ways to see your cards.** Calendar, tiles, by bank, by week, a balance chart and highest interest
-  first are designed but not built.
+- **More ways to see your cards.** By bank, by week, a balance chart and highest interest first are
+  designed but not built.
 - **Real sign-in.** The plan is Supabase Auth with Sign in with Apple and Google. The code has
   `TODO(supabase)` markers where the token exchange goes.
 - **Saving your data.** Everything lives in memory. If you quit the app, your cards are gone. The plan is
@@ -188,7 +198,8 @@ CreditCardTracker/
     FormInput.swift         Reads and formats what the user types
     Screens/                Sign up, Log in, Pick cards, Card form, Review
     Components/             Rows, form pieces, social buttons, due date picker sheet
-  Home/           Home screen (DashboardView), its sorting and due date logic, and PayLinks (bank pages)
+  Home/           Home screen (DashboardView), its sorting and due date logic, PayLinks (lender pages),
+                  AddCardSheet (the + button) and Views/ (the Views page and each view)
 CreditCardTrackerTests/     Unit tests
 ```
 
