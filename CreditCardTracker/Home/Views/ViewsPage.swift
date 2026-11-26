@@ -6,6 +6,8 @@ enum ViewMode: String, CaseIterable, Identifiable {
     case tiles
     case byBank
     case byWeek
+    case chart
+    case interest
 
     var id: String { rawValue }
 
@@ -15,6 +17,8 @@ enum ViewMode: String, CaseIterable, Identifiable {
         case .tiles: return "Tiles"
         case .byBank: return "By bank"
         case .byWeek: return "By week"
+        case .chart: return "Chart"
+        case .interest: return "Interest"
         }
     }
 }
@@ -163,6 +167,13 @@ struct ViewsPage: View {
                     data: data,
                     onEdit: { editing = EditTarget(id: $0) },
                     onPay: { openURL($0) }
+                )
+            case .chart:
+                ChartModeView(data: data)
+            case .interest:
+                InterestModeView(
+                    data: data,
+                    onEdit: { editing = EditTarget(id: $0) }
                 )
             }
         }
