@@ -59,7 +59,10 @@ After you confirm, the home screen shows your total balance, your total minimum 
 in the next 7 days, and the card due next. Below that is every card, with its due date, balance and minimum
 payment. The button above the list ("Due date") opens a menu to sort by due date, balance, minimum payment,
 bank or interest rate, and the app remembers your choice. A card missing details is listed last and left out
-of the totals.
+of the totals, with an "Add details" link.
+
+Tap any card to open its details in the same form used during setup. You can change the balance, minimum
+payment, due date and interest rate, or remove the card.
 
 A due date repeats every month, so the home screen works out the next date from the day you entered: a card
 entered as "Dec 14" is due on the 14th of every month. In a month too short for that day, the last day of the
@@ -71,7 +74,8 @@ month is used.
   browser. Nothing is built for it yet.
 - **More ways to see your cards.** Calendar, tiles, by bank, by week, a balance chart and highest interest
   first are designed but not built.
-- **Editing a card from the home screen.** A card missing details cannot be filled in from there yet.
+- **Adding a card from the home screen.** You can edit or remove a card there, but picking a new one is
+  still only part of the first-time setup.
 - **Real sign-in.** The plan is Supabase Auth with Sign in with Apple and Google. The code has
   `TODO(supabase)` markers where the token exchange goes.
 - **Saving your data.** Everything lives in memory. If you quit the app, your cards are gone. The plan is

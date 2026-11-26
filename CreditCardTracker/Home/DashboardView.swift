@@ -1,11 +1,13 @@
 import SwiftUI
 
 /// The home screen: totals, the card due next, and every card in a list the user can sort.
-/// Shown after "Confirm and finish".
+/// Tapping a card opens its details to edit. Shown after "Confirm and finish".
 struct DashboardView: View {
     @EnvironmentObject private var store: OnboardingStore
     /// The sort the user picked last time, kept on the phone.
     @AppStorage("dashboardSort") private var sortName = CardSort.dueDate.rawValue
+    /// The card whose details are open. Nil when no card is being edited.
+    @State private var editing: EditTarget?
 
     private var sort: CardSort {
         CardSort(rawValue: sortName) ?? .dueDate
@@ -24,7 +26,16 @@ struct DashboardView: View {
                     DueSoonBanner(card: dueSoon)
                 }
 
-                cardList(data)
+                if data.cards.isEmpty && data.incomplete.isEmpty {
+                    Text("No cards yet. Adding a card from here is coming soon.")
+                        .font(.app(15))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+                } else {
+                    cardList(data)
+                }
 
                 if !data.incomplete.isEmpty {
                     Text("Totals count only cards with complete details.")
@@ -39,6 +50,9 @@ struct DashboardView: View {
             .padding(.bottom, 24)
         }
         .background(Theme.background.ignoresSafeArea())
+        .sheet(item: $editing) { target in
+            EditCardSheet(cardID: target.id)
+        }
     }
 
     // MARK: Pieces
@@ -70,11 +84,15 @@ struct DashboardView: View {
             }
 
             ForEach(data.cards) { item in
-                DashboardCardRow(item: item, sort: sort)
+                DashboardCardRow(item: item, sort: sort) {
+                    editing = EditTarget(id: item.id)
+                }
             }
 
             ForEach(data.incomplete) { card in
-                IncompleteCardRow(card: card)
+                IncompleteCardRow(card: card) {
+                    editing = EditTarget(id: card.id)
+                }
             }
         }
     }
@@ -203,8 +221,17 @@ private struct DueSoonBanner: View {
 private struct DashboardCardRow: View {
     let item: DashboardCard
     let sort: CardSort
+    let onEdit: () -> Void
 
     var body: some View {
+        Button(action: onEdit) {
+            content
+        }
+        .buttonStyle(RowButtonStyle())
+        .accessibilityHint("Edit this card")
+    }
+
+    private var content: some View {
         HStack(spacing: 14) {
             CardBadge(card: item.card.catalogCard)
 
@@ -265,8 +292,17 @@ private struct DashboardCardRow: View {
 /// A card that is missing details: dashed outline, gray badge, and a note that it is not in the totals.
 private struct IncompleteCardRow: View {
     let card: TrackedCard
+    let onEdit: () -> Void
 
     var body: some View {
+        Button(action: onEdit) {
+            content
+        }
+        .buttonStyle(RowButtonStyle())
+        .accessibilityHint("Add the missing details")
+    }
+
+    private var content: some View {
         HStack(spacing: 14) {
             CardBadge(card: card.catalogCard, isMuted: true)
 
@@ -280,7 +316,11 @@ private struct IncompleteCardRow: View {
                     .foregroundStyle(Theme.textSecondary)
             }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
+
+            Text("Add details")
+                .font(.app(15, .semibold))
+                .foregroundStyle(Theme.accentText)
         }
         .padding(14)
         .overlay(
@@ -291,6 +331,40 @@ private struct IncompleteCardRow: View {
                 )
         )
         .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Editing a card
+
+/// Names the card to edit. `sheet(item:)` needs something Identifiable.
+private struct EditTarget: Identifiable {
+    let id: UUID
+}
+
+/// The card form in a sheet, the same form as "Edit" on the review screen. Saving or the back arrow
+/// closes it. If the card is removed from inside the form, the sheet closes too.
+private struct EditCardSheet: View {
+    let cardID: UUID
+
+    @EnvironmentObject private var store: OnboardingStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            CardFormView(cardID: cardID, mode: .edit)
+        }
+        .onChange(of: store.card(withID: cardID) == nil) { _, isRemoved in
+            if isRemoved { dismiss() }
+        }
+    }
+}
+
+/// A row that is a button: the whole row is tappable and dims a little while pressed.
+private struct RowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
 
