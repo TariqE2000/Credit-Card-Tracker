@@ -37,7 +37,7 @@ struct DashboardView: View {
                 }
 
                 if data.cards.isEmpty && data.incomplete.isEmpty {
-                    Text("No cards yet. Adding a card from here is coming soon.")
+                    Text("No cards yet. Tap + to add one.")
                         .font(.app(15))
                         .foregroundStyle(Theme.textSecondary)
                         .frame(maxWidth: .infinity)
@@ -63,6 +63,9 @@ struct DashboardView: View {
         .sheet(item: $editing) { target in
             EditCardSheet(cardID: target.id)
         }
+        .sheet(isPresented: addingCards) {
+            AddCardSheet()
+        }
         .safeAreaInset(edge: .bottom) {
             if let notice = justPaid {
                 PaidUndoBar(name: notice.name) { undoPaid(notice.id) }
@@ -84,6 +87,16 @@ struct DashboardView: View {
 
     // MARK: Actions
 
+    /// The "+" sheet is open while the store says so. Swiping it down tells the store it was cancelled.
+    private var addingCards: Binding<Bool> {
+        Binding(
+            get: { store.isAddingFromHome },
+            set: { isOpen in
+                if !isOpen { store.cancelAddingFromHome() }
+            }
+        )
+    }
+
     private func markPaid(_ item: DashboardCard) {
         store.markPaid(item.id, dueDate: item.nextDueDate)
         withAnimation { justPaid = PaidNotice(id: item.id, name: item.card.catalogCard.displayName) }
@@ -97,16 +110,36 @@ struct DashboardView: View {
     // MARK: Pieces
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(Date().formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                .font(.app(13, .medium))
-                .foregroundStyle(Theme.textSecondary)
-            Text("Your cards")
-                .font(.app(28, .bold))
-                .foregroundStyle(Theme.textPrimary)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Date().formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                    .font(.app(13, .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                Text("Your cards")
+                    .font(.app(28, .bold))
+                    .foregroundStyle(Theme.textPrimary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+
+            Spacer(minLength: 8)
+
+            addButton
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
+    }
+
+    /// The round "+" at the top right. Opens the card picker in a sheet.
+    private var addButton: some View {
+        Button {
+            store.startAddingFromHome()
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Color.white)
+                .frame(width: 44, height: 44)
+                .background(Theme.accent, in: Circle())
+        }
+        .accessibilityLabel("Add a card")
     }
 
     private func cardList(_ data: DashboardData) -> some View {

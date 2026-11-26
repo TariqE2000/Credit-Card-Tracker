@@ -49,6 +49,8 @@ final class OnboardingStore: ObservableObject {
     /// The cards added with "Add another card", in order. Only these get a form on the way back to
     /// the review screen. Empty the rest of the time.
     @Published private(set) var addBatch: [UUID] = []
+    /// True while the "+" sheet on the home screen is open: the pick screen, then a form for each new card.
+    @Published private(set) var isAddingFromHome = false
 
     // MARK: Sign up and log in
 
@@ -119,6 +121,32 @@ final class OnboardingStore: ObservableObject {
         path.append(.addCards)
     }
 
+    // MARK: Add a card (from the home screen)
+
+    /// The "+" button on the home screen. Opens a sheet that starts on "Pick your cards" with the cards the
+    /// user already has ticked and locked, the same screen "Add another card" uses on the review screen.
+    func startAddingFromHome() {
+        selectedCatalogIDs = cards.map(\.catalogCard.id)
+        lockedCatalogIDs = Set(selectedCatalogIDs)
+        addBatch = []
+        path = []
+        isAddingFromHome = true
+    }
+
+    /// The sheet was closed before the last form. Cards that already got a form stay, and can be finished
+    /// later from the home screen ("Add details"). Picks that never reached a form are dropped.
+    func cancelAddingFromHome() {
+        closeAddingFromHome()
+    }
+
+    private func closeAddingFromHome() {
+        isAddingFromHome = false
+        selectedCatalogIDs = cards.map(\.catalogCard.id)
+        lockedCatalogIDs = []
+        addBatch = []
+        path = []
+    }
+
     /// True for a card the user already has. Only meaningful on the second pick screen.
     func isLocked(_ card: CatalogCard) -> Bool {
         lockedCatalogIDs.contains(card.id)
@@ -142,6 +170,11 @@ final class OnboardingStore: ObservableObject {
 
     /// Back to the review screen that is already in the stack, closing the pick screen and the forms.
     private func finishAdding() {
+        // From the home screen there is no review screen: the sheet just closes.
+        if isAddingFromHome {
+            closeAddingFromHome()
+            return
+        }
         addBatch = []
         if let reviewIndex = path.lastIndex(of: .review) {
             path = Array(path.prefix(through: reviewIndex))
@@ -226,9 +259,9 @@ final class OnboardingStore: ObservableObject {
         paidDueDates[id] = nil
 
         if cards.isEmpty {
-            // Nothing left: back to picking cards.
+            // Nothing left: back to picking cards. In the home screen's sheet that is the screen it opened on.
             addBatch = []
-            path = [.pickCards]
+            path = isAddingFromHome ? [] : [.pickCards]
             return
         }
 
