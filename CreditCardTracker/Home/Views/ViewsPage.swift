@@ -34,6 +34,8 @@ struct ViewsPage: View {
     @AppStorage("viewsMode") private var modeName = ViewMode.calendar.rawValue
     /// Shared with the home screen's sort button.
     @AppStorage("dashboardSort") private var sortName = CardSort.dueDate.rawValue
+    /// The card whose sheet is open (tap a card with details), and the card whose form is open ("Add details").
+    @State private var opened: EditTarget?
     @State private var editing: EditTarget?
 
     private var mode: ViewMode {
@@ -63,8 +65,17 @@ struct ViewsPage: View {
         .background(Theme.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
-        .sheet(item: $editing) { target in
-            EditCardSheet(cardID: target.id)
+        .cardSheets(opened: $opened, editing: $editing)
+    }
+
+    // MARK: Actions
+
+    /// A card with details opens its sheet. A card still missing details goes straight to the form to add them.
+    private func open(_ id: UUID, in data: DashboardData) {
+        if data.cards.contains(where: { $0.id == id }) {
+            opened = EditTarget(id: id)
+        } else {
+            editing = EditTarget(id: id)
         }
     }
 
@@ -146,26 +157,26 @@ struct ViewsPage: View {
             case .calendar:
                 CalendarModeView(
                     data: data,
-                    onEdit: { editing = EditTarget(id: $0) },
+                    onEdit: { open($0, in: data) },
                     onPay: { openURL($0) }
                 )
             case .tiles:
                 TilesModeView(
                     data: data,
                     sortName: $sortName,
-                    onEdit: { editing = EditTarget(id: $0) },
+                    onEdit: { open($0, in: data) },
                     onPay: { openURL($0) }
                 )
             case .byBank:
                 ByBankModeView(
                     data: data,
-                    onEdit: { editing = EditTarget(id: $0) },
+                    onEdit: { open($0, in: data) },
                     onPay: { openURL($0) }
                 )
             case .byWeek:
                 ByWeekModeView(
                     data: data,
-                    onEdit: { editing = EditTarget(id: $0) },
+                    onEdit: { open($0, in: data) },
                     onPay: { openURL($0) }
                 )
             case .chart:

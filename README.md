@@ -61,8 +61,11 @@ payment. The button above the list ("Due date") opens a menu to sort by due date
 bank or interest rate, and the app remembers your choice. A card missing details is listed last and left out
 of the totals, with an "Add details" link.
 
-Tap any card to open its details in the same form used during setup. You can change the balance, minimum
-payment, due date and interest rate, or remove the card.
+Tap a card to open its sheet: the balance and minimum payment, a **Pay Chase** button when the bank has a page,
+and one button for this month's payment that says **Mark paid** or, once marked, **Mark unpaid**. **Edit card
+details** in the sheet opens the same form used during setup, where you can change the balance, minimum
+payment, due date and interest rate, or remove the card. A card still missing details opens that form
+straight away. The Calendar, Tiles, By bank and By week views open the same sheet.
 
 **Add a card.** The round **+** at the top right opens "Pick your cards" in a sheet, with the cards you
 already have ticked and locked. Tick new ones (or "My card is not listed"), then fill in a form for each new
@@ -74,10 +77,14 @@ own web page (for example "Pay Chase"), where you sign in and pay. It opens the 
 iPhone: in Safari, or in the bank's app if you have it and the bank has set that link up to open there.
 The app never sees your bank password or card number and never makes a payment itself. **Mark paid** moves
 the card on to next month's due date, so the banner and "due in 7 days" stop counting it, and a bar at the
-bottom offers **Undo** for a few seconds. A paid card shows "Paid · next due Dec 28" and can be un-marked
-by pressing and holding it. Pressing and holding any card also offers Mark paid, for cards that are not
-the next one due. Mark paid does not change the balance you entered. It wears off by itself once the due
-day has passed, and for now it is only remembered while the app is open.
+bottom offers **Undo** for a few seconds.
+
+The same payment status is on every card's sheet, so any card can be marked, not only the one in the banner.
+The button follows the card: **Mark paid** on an unpaid card, **Mark unpaid** on a paid one, which puts its due
+date back. A paid card shows "Paid · next due Dec 28" and has no Pay button, because there is nothing left to
+pay this month. Pressing and holding a card on the home screen offers the same. Mark paid does not change the
+balance you entered. It wears off by itself once the due day has passed, and for now it is only remembered
+while the app is open.
 
 Pay links are a hand-made list in `Home/PayLinks.swift`. Each entry holds the lender's name and its page
 together, so the button always names the lender it opens ("Pay Chase" opens Chase, "Pay Citi" opens Citi).
@@ -207,7 +214,8 @@ CreditCardTracker/
     Screens/                Sign up, Log in, Pick cards, Card form, Review
     Components/             Rows, form pieces, social buttons, due date picker sheet
   Home/           Home screen (DashboardView), its sorting and due date logic, PayLinks (lender pages),
-                  AddCardSheet (the + button) and Views/ (the Views page and each of its six views)
+                  AddCardSheet (the + button), CardSheet (what a tapped card opens) and Views/ (the Views page and
+                  each of its six views)
 CreditCardTrackerTests/     Unit tests
 ```
 

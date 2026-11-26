@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The home screen: totals, the card due next, and every card in a list the user can sort.
-/// Tapping a card opens its details to edit. "Pay" opens the lender's page, "Mark paid" moves a card on to
-/// next month's due day. Shown after "Confirm and finish".
+/// Tapping a card opens its sheet, where "Pay" opens the lender's page, "Mark paid" moves the card on to
+/// next month's due day and "Mark unpaid" brings it back. Shown after "Confirm and finish".
 struct DashboardView: View {
     @EnvironmentObject private var store: OnboardingStore
     /// Opens a web address the way the phone normally does: in Safari, or in the bank's app if it is
@@ -10,7 +10,9 @@ struct DashboardView: View {
     @Environment(\.openURL) private var openURL
     /// The sort the user picked last time, kept on the phone.
     @AppStorage("dashboardSort") private var sortName = CardSort.dueDate.rawValue
-    /// The card whose details are open. Nil when no card is being edited.
+    /// The card whose sheet is open. Nil when none is.
+    @State private var opened: EditTarget?
+    /// The card whose details form is open. Nil when no card is being edited.
     @State private var editing: EditTarget?
     /// The card just marked as paid, so the "Undo" bar can offer to take it back for a few seconds.
     @State private var justPaid: PaidNotice?
@@ -74,9 +76,7 @@ struct DashboardView: View {
             .padding(.bottom, 24)
         }
         .background(Theme.background.ignoresSafeArea())
-        .sheet(item: $editing) { target in
-            EditCardSheet(cardID: target.id)
-        }
+        .cardSheets(opened: $opened, editing: $editing)
         .sheet(isPresented: addingCards) {
             AddCardSheet()
         }
@@ -197,7 +197,7 @@ struct DashboardView: View {
                 DashboardCardRow(
                     item: item,
                     sort: sort,
-                    onEdit: { editing = EditTarget(id: item.id) },
+                    onEdit: { opened = EditTarget(id: item.id) },
                     onPay: { openURL($0) },
                     onMarkPaid: { markPaid(item) },
                     onUndoPaid: { undoPaid(item.id) }
@@ -413,7 +413,7 @@ private struct DashboardCardRow: View {
                     .padding(.bottom, item.payURL == nil ? 14 : 2)
             }
             .buttonStyle(RowButtonStyle())
-            .accessibilityHint("Edit this card")
+            .accessibilityHint("Opens this card to pay or mark it paid")
 
             if let url = item.payURL {
                 Button { onPay(url) } label: {

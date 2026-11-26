@@ -135,7 +135,7 @@ private struct BankGroupCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(RowButtonStyle())
-        .accessibilityHint("Edit this card")
+        .accessibilityHint("Opens this card to pay or mark it paid")
     }
 }
 

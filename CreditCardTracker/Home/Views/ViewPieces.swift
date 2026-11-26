@@ -79,7 +79,7 @@ struct PayableRow<Content: View>: View {
                     .padding(.bottom, payURL == nil ? 14 : 2)
             }
             .buttonStyle(RowButtonStyle())
-            .accessibilityHint("Edit this card")
+            .accessibilityHint("Opens this card to pay or mark it paid")
 
             if let url = payURL {
                 Button { onPay(url) } label: {
