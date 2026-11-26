@@ -1,51 +1,153 @@
 import SwiftUI
 
-/// One tappable card in the "Pick your cards" list: badge, name, issuer and a checkbox.
+/// One card in the "Pick your cards" list: badge, name, issuer and a checkbox. Once the card is ticked,
+/// a "How many do you have?" line with a − / + counter appears under it, for a user with several copies.
 struct CardPickRow: View {
     let card: CatalogCard
-    let isSelected: Bool
-    /// A card the user already added. Shown ticked and dimmed, and it cannot be tapped.
-    var isLocked = false
-    let action: () -> Void
+    /// Copies picked. 0 means the row is not ticked.
+    let count: Int
+    /// Copies the user already added (second pick screen). Those cannot be unticked or counted away,
+    /// but the user can add more.
+    var lockedCount = 0
+    var maxCount = CardCopies.maximum
+    let onToggle: () -> Void
+    let onIncrease: () -> Void
+    let onDecrease: () -> Void
+
+    private var isSelected: Bool { count > 0 }
+    private var isLocked: Bool { lockedCount > 0 }
 
     var body: some View {
-        Button(action: action) {
+        VStack(spacing: 12) {
             HStack(spacing: 14) {
-                CardBadge(card: card)
+                // Everything left of the checkbox is one big tap target that ticks or unticks the card.
+                Button(action: toggle) {
+                    HStack(spacing: 14) {
+                        CardBadge(card: card)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(card.name)
-                        .font(.app(16, .semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .multilineTextAlignment(.leading)
-                    Text(card.issuer)
-                        .font(.app(13))
-                        .foregroundStyle(Theme.textSecondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(card.name)
+                                .font(.app(16, .semibold))
+                                .foregroundStyle(Theme.textPrimary)
+                                .multilineTextAlignment(.leading)
+                            Text(card.issuer)
+                                .font(.app(13))
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .opacity(isLocked ? 0.6 : 1)
+                .accessibilityValue(countDescription)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityHint(isLocked ? "Already added" : "")
 
-                Spacer(minLength: 8)
-
-                Checkbox(isOn: isSelected)
+                // The checkbox is tappable too. VoiceOver uses the button on the left instead.
+                Button(action: toggle) {
+                    Checkbox(isOn: isSelected)
+                        .frame(width: 32, height: 40)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .opacity(isLocked ? 0.6 : 1)
+                .accessibilityHidden(true)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity)
-            .background(
-                isSelected ? Theme.accentTint : Theme.surface,
-                in: RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous)
-                    .strokeBorder(isSelected ? Theme.accent : Theme.border, lineWidth: 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous))
+
+            if isSelected {
+                HStack(spacing: 12) {
+                    Text("How many do you have?")
+                        .font(.app(14))
+                        .foregroundStyle(Theme.textSecondary)
+
+                    Spacer(minLength: 8)
+
+                    CountStepper(
+                        count: count,
+                        cardName: card.name,
+                        canDecrease: count > max(lockedCount, 1),
+                        canIncrease: count < maxCount,
+                        onIncrease: onIncrease,
+                        onDecrease: onDecrease
+                    )
+                }
+                .padding(.top, 12)
+                .overlay(alignment: .top) {
+                    Theme.border.frame(height: 1)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(
+            isSelected ? Theme.accentTint : Theme.surface,
+            in: RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius, style: .continuous)
+                .strokeBorder(isSelected ? Theme.accent : Theme.border, lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+    }
+
+    /// A card the user already added cannot be unticked.
+    private func toggle() {
+        if !isLocked { onToggle() }
+    }
+
+    private var countDescription: String {
+        switch count {
+        case 0: return "Not selected"
+        case 1: return "1 card"
+        default: return "\(count) cards"
+        }
+    }
+}
+
+/// "−  2  +": how many copies of one card the user has.
+private struct CountStepper: View {
+    let count: Int
+    let cardName: String
+    let canDecrease: Bool
+    let canIncrease: Bool
+    let onIncrease: () -> Void
+    let onDecrease: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            stepButton("minus", label: "Fewer \(cardName) cards", isEnabled: canDecrease, action: onDecrease)
+
+            Text("\(count)")
+                .font(.app(16, .semibold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+                .frame(minWidth: 24)
+                .accessibilityLabel("\(count) \(cardName) cards")
+
+            stepButton("plus", label: "More \(cardName) cards", isEnabled: canIncrease, action: onIncrease)
+        }
+    }
+
+    private func stepButton(
+        _ systemImage: String,
+        label: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(isEnabled ? Theme.accentText : Theme.textSecondary.opacity(0.4))
+                .frame(width: 32, height: 32)
+                .background(Theme.surface, in: Circle())
+                .overlay(Circle().strokeBorder(Theme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .disabled(isLocked)
-        .opacity(isLocked ? 0.6 : 1)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityHint(isLocked ? "Already added" : "")
+        .disabled(!isEnabled)
+        .accessibilityLabel(label)
     }
 }
 
@@ -73,8 +175,11 @@ private struct Checkbox: View {
 
 #Preview("Rows") {
     VStack(spacing: 10) {
-        CardPickRow(card: CardCatalog.all[0], isSelected: true) {}
-        CardPickRow(card: CardCatalog.all[2], isSelected: false) {}
+        CardPickRow(card: CardCatalog.all[0], count: 1, onToggle: {}, onIncrease: {}, onDecrease: {})
+        CardPickRow(card: CardCatalog.all[1], count: 3, onToggle: {}, onIncrease: {}, onDecrease: {})
+        CardPickRow(card: CardCatalog.all[2], count: 0, onToggle: {}, onIncrease: {}, onDecrease: {})
+        // Already added: dimmed, cannot be unticked, but one more copy can be added.
+        CardPickRow(card: CardCatalog.all[3], count: 2, lockedCount: 2, onToggle: {}, onIncrease: {}, onDecrease: {})
     }
     .padding(24)
     .background(Theme.background)

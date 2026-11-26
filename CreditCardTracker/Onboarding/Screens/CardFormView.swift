@@ -138,7 +138,7 @@ private struct CardFormContent: View {
             DueDatePickerSheet(digits: $dueDigits)
         }
         .confirmationDialog(
-            "Remove \(card.catalogCard.displayName)?",
+            "Remove \(store.title(of: card))?",
             isPresented: $showRemoveConfirmation,
             titleVisibility: .visible
         ) {
@@ -187,7 +187,7 @@ private struct CardFormContent: View {
             CardBadge(card: card.catalogCard, size: 48)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(card.catalogCard.name)
+                Text(store.title(of: card))
                     .font(.app(22, .bold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)

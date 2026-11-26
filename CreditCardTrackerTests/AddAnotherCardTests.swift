@@ -133,4 +133,59 @@ final class AddAnotherCardTests: XCTestCase {
         XCTAssertEqual(store.progress(for: store.cards[0].id).total, 2)
         XCTAssertEqual(store.progress(for: store.cards[1].id).position, 2)
     }
+
+    // MARK: Another copy of a card the user already has
+
+    func testAnotherCopyOfACardAlreadyAddedCanBePicked() throws {
+        let store = try storeOnReview()
+        let unlimited = try card("us-chase-freedom-unlimited")
+        store.startAddingCards()
+
+        XCTAssertEqual(store.lockedCount(of: unlimited), 1)
+        store.increaseCount(of: unlimited)
+
+        XCTAssertEqual(store.count(of: unlimited), 2)
+        XCTAssertEqual(store.newPickCount, 1)
+    }
+
+    func testCardsAlreadyAddedCannotBeRemovedOnThePickScreen() throws {
+        let store = try storeOnReview()
+        let unlimited = try card("us-chase-freedom-unlimited")
+        store.startAddingCards()
+        store.increaseCount(of: unlimited)
+
+        store.decreaseCount(of: unlimited)
+        store.decreaseCount(of: unlimited)
+        XCTAssertEqual(store.count(of: unlimited), 1, "the copy already added stays")
+
+        store.toggleSelection(of: unlimited)
+        XCTAssertTrue(store.isSelected(unlimited), "a locked card cannot be unticked")
+        XCTAssertEqual(store.newPickCount, 0)
+    }
+
+    func testTheNewCopyGetsItsOwnFormAndTheOldOneKeepsItsDetails() throws {
+        let store = try storeOnReview()
+        let unlimited = try card("us-chase-freedom-unlimited")
+        let original = store.cards[0]
+        store.startAddingCards()
+        store.increaseCount(of: unlimited)
+
+        store.continueFromAddCards()
+
+        XCTAssertEqual(store.cards.count, 3)
+        XCTAssertEqual(store.cards[0].id, original.id)
+        XCTAssertEqual(store.cards[0].details, original.details)
+        XCTAssertEqual(store.cards[1].catalogCard.id, unlimited.id)
+        XCTAssertEqual(store.addBatch, [store.cards[1].id])
+        XCTAssertEqual(store.path.last, .cardForm(store.cards[1].id))
+        XCTAssertEqual(store.progress(for: store.cards[1].id).position, 1)
+        XCTAssertEqual(store.progress(for: store.cards[1].id).total, 1)
+        XCTAssertEqual(store.title(of: store.cards[0]), "Chase Freedom Unlimited #1")
+        XCTAssertEqual(store.title(of: store.cards[1]), "Chase Freedom Unlimited #2")
+
+        store.advance(from: store.cards[1].id)
+        XCTAssertEqual(store.path.last, .review)
+        XCTAssertTrue(store.lockedCounts.isEmpty, "nothing is locked once adding is finished")
+    }
 }
+

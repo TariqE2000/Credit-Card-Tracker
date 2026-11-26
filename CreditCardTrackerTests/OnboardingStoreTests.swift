@@ -191,3 +191,163 @@ final class OnboardingStoreTests: XCTestCase {
         XCTAssertTrue(store.path.isEmpty)
     }
 }
+
+// MARK: - Several copies of the same card
+
+@MainActor
+final class MultipleCopiesTests: XCTestCase {
+    private func card(_ id: String) throws -> CatalogCard {
+        try XCTUnwrap(CardCatalog.card(withID: id))
+    }
+
+    private func complete(_ balance: Decimal) -> CardDetails {
+        CardDetails(balance: balance, minimumPayment: 25, dueDate: DueDate(month: 12, day: 14), apr: nil)
+    }
+
+    func testPlusAddsACopyNextToTheOthers() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        let apple = try card("us-apple-card")
+        store.toggleSelection(of: flex)
+        store.toggleSelection(of: apple)
+
+        store.increaseCount(of: flex)
+
+        XCTAssertEqual(store.selectedCatalogIDs, [flex.id, flex.id, apple.id])
+        XCTAssertEqual(store.count(of: flex), 2)
+        XCTAssertEqual(store.count(of: apple), 1)
+        XCTAssertEqual(store.selectedCount, 3)
+    }
+
+    func testPlusDoesNothingForACardThatIsNotTicked() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        store.increaseCount(of: flex)
+        XCTAssertEqual(store.count(of: flex), 0)
+        XCTAssertEqual(store.selectedCount, 0)
+    }
+
+    func testPlusStopsAtTheMaximum() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        store.toggleSelection(of: flex)
+        for _ in 0..<(CardCopies.maximum + 5) {
+            store.increaseCount(of: flex)
+        }
+        XCTAssertEqual(store.count(of: flex), CardCopies.maximum)
+    }
+
+    func testMinusRemovesACopyButNeverUntickTheCard() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        store.toggleSelection(of: flex)
+        store.increaseCount(of: flex)
+        store.increaseCount(of: flex)
+
+        store.decreaseCount(of: flex)
+        XCTAssertEqual(store.count(of: flex), 2)
+        store.decreaseCount(of: flex)
+        store.decreaseCount(of: flex)
+        XCTAssertEqual(store.count(of: flex), 1)
+        XCTAssertTrue(store.isSelected(flex))
+    }
+
+    func testUntickingRemovesEveryCopy() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        store.toggleSelection(of: flex)
+        store.increaseCount(of: flex)
+        store.increaseCount(of: flex)
+
+        store.toggleSelection(of: flex)
+
+        XCTAssertFalse(store.isSelected(flex))
+        XCTAssertEqual(store.selectedCount, 0)
+    }
+
+    func testEachCopyBecomesItsOwnCardAndIsNumbered() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        let apple = try card("us-apple-card")
+        store.toggleSelection(of: flex)
+        store.increaseCount(of: flex)
+        store.toggleSelection(of: apple)
+
+        store.continueFromPickCards()
+
+        XCTAssertEqual(store.cards.count, 3)
+        XCTAssertEqual(Set(store.cards.map(\.id)).count, 3, "every copy has its own ID")
+        XCTAssertEqual(store.cards.map { store.title(of: $0) },
+                       ["Chase Freedom Flex #1", "Chase Freedom Flex #2", "Apple Card"])
+        XCTAssertEqual(store.progress(for: store.cards[1].id).position, 2)
+        XCTAssertEqual(store.progress(for: store.cards[1].id).total, 3)
+    }
+
+    func testDetailsStayWithTheirCopyWhenThePicksChange() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        store.toggleSelection(of: flex)
+        store.increaseCount(of: flex)
+        store.continueFromPickCards()
+        let first = store.cards[0].id
+        let second = store.cards[1].id
+        store.saveDetails(complete(100), for: first)
+        store.saveDetails(complete(200), for: second)
+
+        // Back on "Pick your cards": a third copy is added, then Continue again.
+        store.increaseCount(of: flex)
+        store.continueFromPickCards()
+
+        XCTAssertEqual(store.cards.count, 3)
+        XCTAssertEqual(store.cards[0].id, first)
+        XCTAssertEqual(store.cards[1].id, second)
+        XCTAssertEqual(store.cards[0].details.balance, 100)
+        XCTAssertEqual(store.cards[1].details.balance, 200)
+        XCTAssertNil(store.cards[2].details.balance)
+
+        // And one copy fewer: the first copies survive.
+        store.decreaseCount(of: flex)
+        store.decreaseCount(of: flex)
+        store.continueFromPickCards()
+        XCTAssertEqual(store.cards.map(\.id), [first])
+    }
+
+    func testRemovingOneCopyKeepsTheOthers() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        store.toggleSelection(of: flex)
+        store.increaseCount(of: flex)
+        store.increaseCount(of: flex)
+        store.continueFromPickCards()
+        let first = store.cards[0].id
+        let third = store.cards[2].id
+
+        store.removeCard(store.cards[1].id)
+
+        XCTAssertEqual(store.cards.map(\.id), [first, third])
+        XCTAssertEqual(store.count(of: flex), 2, "only the removed copy leaves the picks")
+        XCTAssertEqual(store.cards.map { store.title(of: $0) }, ["Chase Freedom Flex #1", "Chase Freedom Flex #2"])
+    }
+
+    func testTheNumberGoesAwayWhenOnlyOneCopyIsLeft() throws {
+        let store = OnboardingStore()
+        let flex = try card("us-chase-freedom-flex")
+        store.toggleSelection(of: flex)
+        store.increaseCount(of: flex)
+        store.continueFromPickCards()
+
+        store.removeCard(store.cards[0].id)
+
+        XCTAssertEqual(store.cards.count, 1)
+        XCTAssertEqual(store.title(of: store.cards[0]), "Chase Freedom Flex")
+    }
+
+    func testNotListedCardsStillGetTheirOwnForms() throws {
+        let store = OnboardingStore()
+        store.addNotListedCard()
+        store.addNotListedCard()
+        store.continueFromPickCards()
+        XCTAssertEqual(store.cards.count, 2)
+        XCTAssertEqual(Set(store.cards.map(\.id)).count, 2)
+    }
+}

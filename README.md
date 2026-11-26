@@ -38,8 +38,10 @@ The onboarding flow, one screen per pull request:
    The buttons move you to the next screen; they do not sign anyone in yet.
 2. **Log in.** The same two buttons, with a link back to sign up.
 3. **Pick your cards.** A searchable list (by card name or bank) of cards with a colored badge or the
-   issuer's logo. Select as many as you like; the button counts them ("Continue with 3 cards"). If your
-   card is not in the list, tap **My card is not listed** and type its name on the next screen.
+   issuer's logo. Select as many as you like; the button counts them ("Continue with 3 cards"). Ticking a
+   card shows **How many do you have?** with a − / + counter (up to 10), for someone with two of the same
+   card; each copy gets its own form and is numbered ("Chase Sapphire Preferred #2"). If your card is not
+   in the list, tap **My card is not listed** and type its name on the next screen.
 4. **Card form.** One form per card, with a "Card 2 of 4" progress label. It shows the balance, minimum
    payment, due date and APR fields. **Save and continue** checks that balance, minimum payment and due
    date are filled in and shows red messages for anything missing or unreadable. **Skip details for now**
@@ -48,8 +50,8 @@ The onboarding flow, one screen per pull request:
    **Incomplete** tag on cards with missing details. From here you can:
    - **Edit** a card, or tap **Add details** on an incomplete one. Both open the same form in edit mode,
      where **Remove this card** also lives (it asks you to confirm),
-   - **Add another card**, which reopens the card picker with the cards you already have locked, runs the
-     form only for the new cards, and returns you to Review,
+   - **Add another card**, which reopens the card picker with the cards you already have locked (you can
+     still add more copies of them), runs the form only for the new cards, and returns you to Review,
    - **Confirm and finish**, which ends onboarding.
 
 There is deliberately no back button or swipe-back on the Review screen, because everything on it can be
@@ -190,7 +192,8 @@ Work is split into **stacked pull requests, one feature each**. Each pull reques
 the one before it, so they are reviewed and merged in order:
 
 Project foundation, then sign up, log in, pick your cards, card form, review, not-listed cards with a date
-picker, add another card, issuer logos, a README rewrite, and the card list from the CDN.
+picker, add another card, issuer logos, a README rewrite, the card list from the CDN, bundled logos, and
+several copies of the same card.
 
 ## Placeholders to replace
 

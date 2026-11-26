@@ -18,6 +18,12 @@ enum OnboardingRoute: Hashable {
     case addCards
 }
 
+/// Limits for picking several copies of the same card.
+enum CardCopies {
+    /// The most copies of one card the "+" button allows.
+    static let maximum = 10
+}
+
 /// Holds everything the onboarding screens share: where the user is, which cards they picked,
 /// and the details they typed in.
 @MainActor
@@ -34,14 +40,15 @@ final class OnboardingStore: ObservableObject {
     @Published private(set) var isSignedIn = false
     @Published private(set) var hasFinishedOnboarding = false
 
-    /// Catalog IDs in the order the user tapped them. Cards added with "My card is not listed" are in here too.
+    /// Catalog IDs in the order the user tapped them. A card the user has two of is in here twice, next to
+    /// each other. Cards added with "My card is not listed" are in here too.
     @Published private(set) var selectedCatalogIDs: [String] = []
     /// The picked cards with their details. Rebuilt each time the user continues from "Pick your cards".
     @Published private(set) var cards: [TrackedCard] = []
 
-    /// Catalog IDs of the cards the user already had when they tapped "Add another card". They show
-    /// as ticked and cannot be changed on the second pick screen.
-    @Published private(set) var lockedCatalogIDs: Set<String> = []
+    /// How many copies of each card the user already had when they tapped "Add another card", by catalog ID.
+    /// Those show as ticked and cannot be removed on the second pick screen; the user can add more copies.
+    @Published private(set) var lockedCounts: [String: Int] = [:]
     /// The cards added with "Add another card", in order. Only these get a form on the way back to
     /// the review screen. Empty the rest of the time.
     @Published private(set) var addBatch: [UUID] = []
@@ -65,18 +72,41 @@ final class OnboardingStore: ObservableObject {
 
     // MARK: Pick your cards
 
+    /// Every picked copy of every card.
     var selectedCount: Int { selectedCatalogIDs.count }
+
+    /// How many copies of this card are picked. 0 means the card is not ticked.
+    func count(of card: CatalogCard) -> Int {
+        selectedCatalogIDs.filter { $0 == card.id }.count
+    }
 
     func isSelected(_ card: CatalogCard) -> Bool {
         selectedCatalogIDs.contains(card.id)
     }
 
+    /// Ticks a card (one copy), or unticks it (every copy). A card the user already added cannot be unticked.
     func toggleSelection(of card: CatalogCard) {
-        if let index = selectedCatalogIDs.firstIndex(of: card.id) {
-            selectedCatalogIDs.remove(at: index)
+        if isSelected(card) {
+            guard !isLocked(card) else { return }
+            selectedCatalogIDs.removeAll { $0 == card.id }
         } else {
             selectedCatalogIDs.append(card.id)
         }
+    }
+
+    /// The "+" button: one more copy of a ticked card, up to `CardCopies.maximum`. It goes next to the other copies.
+    func increaseCount(of card: CatalogCard) {
+        guard let last = selectedCatalogIDs.lastIndex(of: card.id), count(of: card) < CardCopies.maximum else { return }
+        selectedCatalogIDs.insert(card.id, at: last + 1)
+    }
+
+    /// The "−" button: one copy fewer, but never below 1 (unticking is the checkbox's job) and never
+    /// below the copies the user already added.
+    func decreaseCount(of card: CatalogCard) {
+        guard count(of: card) > max(lockedCount(of: card), 1),
+              let last = selectedCatalogIDs.lastIndex(of: card.id)
+        else { return }
+        selectedCatalogIDs.remove(at: last)
     }
 
     // MARK: Cards that are not listed
@@ -94,13 +124,17 @@ final class OnboardingStore: ObservableObject {
         path.append(.cardForm(first.id))
     }
 
+    /// One card for each picked copy. A card that already exists keeps its details: when a card has two
+    /// copies, the first copy matches the first existing card, the second matches the second, and so on.
+    /// If the count goes down, the first copies survive.
     private func rebuildCards() {
-        let existing = Dictionary(
-            cards.map { ($0.catalogCard.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
+        var existing = Dictionary(grouping: cards, by: { $0.catalogCard.id })
         cards = selectedCatalogIDs.compactMap { id -> TrackedCard? in
-            if let card = existing[id] { return card }
+            if var kept = existing[id], !kept.isEmpty {
+                let card = kept.removeFirst()
+                existing[id] = kept
+                return card
+            }
             return resolvedCard(withID: id).map { TrackedCard(catalogCard: $0) }
         }
     }
@@ -110,28 +144,33 @@ final class OnboardingStore: ObservableObject {
     /// "Add another card": opens "Pick your cards" again with the current cards already ticked.
     func startAddingCards() {
         selectedCatalogIDs = cards.map(\.catalogCard.id)
-        lockedCatalogIDs = Set(selectedCatalogIDs)
+        lockedCounts = Dictionary(selectedCatalogIDs.map { ($0, 1) }, uniquingKeysWith: +)
         addBatch = []
         path.append(.addCards)
     }
 
-    /// True for a card the user already has. Only meaningful on the second pick screen.
-    func isLocked(_ card: CatalogCard) -> Bool {
-        lockedCatalogIDs.contains(card.id)
+    /// How many copies of this card the user already had when the second pick screen opened.
+    func lockedCount(of card: CatalogCard) -> Int {
+        lockedCounts[card.id] ?? 0
     }
 
-    /// How many new cards are picked on the second pick screen.
+    /// True for a card the user already has. Only meaningful on the second pick screen.
+    func isLocked(_ card: CatalogCard) -> Bool {
+        lockedCount(of: card) > 0
+    }
+
+    /// How many new cards are picked on the second pick screen: copies beyond the ones already added.
     var newPickCount: Int {
-        selectedCatalogIDs.filter { !lockedCatalogIDs.contains($0) }.count
+        let picked = Dictionary(selectedCatalogIDs.map { ($0, 1) }, uniquingKeysWith: +)
+        return picked.reduce(0) { $0 + max(0, $1.value - (lockedCounts[$1.key] ?? 0)) }
     }
 
     /// Continue on the second pick screen: keeps every current card and its details, adds the new
     /// ones, and opens the form for the first new card.
     func continueFromAddCards() {
+        let existingIDs = Set(cards.map(\.id))
         rebuildCards()
-        addBatch = cards
-            .filter { !lockedCatalogIDs.contains($0.catalogCard.id) }
-            .map(\.id)
+        addBatch = cards.filter { !existingIDs.contains($0.id) }.map(\.id)
         guard let first = addBatch.first else { return }
         path.append(.cardForm(first))
     }
@@ -139,6 +178,7 @@ final class OnboardingStore: ObservableObject {
     /// Back to the review screen that is already in the stack, closing the pick screen and the forms.
     private func finishAdding() {
         addBatch = []
+        lockedCounts = [:]
         if let reviewIndex = path.lastIndex(of: .review) {
             path = Array(path.prefix(through: reviewIndex))
         } else {
@@ -177,6 +217,17 @@ final class OnboardingStore: ObservableObject {
         cards[index].details = details
     }
 
+    /// What to call a card on screen: its name, with a number when the user has several copies of it
+    /// ("Chase Sapphire Preferred #1", "Chase Sapphire Preferred #2").
+    func title(of card: TrackedCard) -> String {
+        let name = card.catalogCard.displayName
+        let copies = cards.filter { $0.catalogCard.id == card.catalogCard.id }
+        guard copies.count > 1, let index = copies.firstIndex(where: { $0.id == card.id }) else {
+            return name
+        }
+        return "\(name) #\(index + 1)"
+    }
+
     /// Sets the name of a not-listed card as the user types it. Catalog cards keep their names.
     func setCustomName(_ name: String, for id: UUID) {
         guard let index = cards.firstIndex(where: { $0.id == id }), cards[index].catalogCard.isCustom else { return }
@@ -206,12 +257,15 @@ final class OnboardingStore: ObservableObject {
     /// Removes a card from the list (and from the picked cards) and shows whatever should come next.
     func removeCard(_ id: UUID) {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
+        // Which copy this is (0 for the first), so only that copy is dropped from the picks.
+        let copyNumber = cards[..<index].filter { $0.catalogCard.id == cards[index].catalogCard.id }.count
         let removed = cards.remove(at: index)
-        selectedCatalogIDs.removeAll { $0 == removed.catalogCard.id }
+        removePick(ofCatalogID: removed.catalogCard.id, copyNumber: copyNumber)
 
         if cards.isEmpty {
             // Nothing left: back to picking cards.
             addBatch = []
+            lockedCounts = [:]
             path = [.pickCards]
             return
         }
@@ -239,6 +293,14 @@ final class OnboardingStore: ObservableObject {
         default:
             break
         }
+    }
+
+    /// Drops one picked copy of a card: the `copyNumber`-th one, counting from 0.
+    private func removePick(ofCatalogID id: String, copyNumber: Int) {
+        let positions = selectedCatalogIDs.indices.filter { selectedCatalogIDs[$0] == id }
+        let which = min(copyNumber, positions.count - 1)
+        guard which >= 0 else { return }
+        selectedCatalogIDs.remove(at: positions[which])
     }
 
     // MARK: Review

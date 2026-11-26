@@ -5,11 +5,12 @@ enum PickCardsMode {
     /// Right after signing up.
     case firstPick
     /// From "Add another card" on the review screen. The cards the user already has are ticked and
-    /// cannot be changed; the user ticks new ones.
+    /// cannot be removed; the user ticks new ones, or adds more copies of a card they have.
     case addMore
 }
 
-/// "Pick your cards": search the catalog and tick every card the user wants to track.
+/// "Pick your cards": search the catalog and tick every card the user wants to track. A ticked card has a
+/// − / + counter for a user who has several of the same card.
 struct PickCardsView: View {
     var mode: PickCardsMode = .firstPick
 
@@ -111,11 +112,12 @@ struct PickCardsView: View {
                 ForEach(results) { card in
                     CardPickRow(
                         card: card,
-                        isSelected: store.isSelected(card),
-                        isLocked: mode == .addMore && store.isLocked(card)
-                    ) {
-                        store.toggleSelection(of: card)
-                    }
+                        count: store.count(of: card),
+                        lockedCount: mode == .addMore ? store.lockedCount(of: card) : 0,
+                        onToggle: { store.toggleSelection(of: card) },
+                        onIncrease: { store.increaseCount(of: card) },
+                        onDecrease: { store.decreaseCount(of: card) }
+                    )
                 }
 
                 if results.isEmpty && !isLoadingFirstList {

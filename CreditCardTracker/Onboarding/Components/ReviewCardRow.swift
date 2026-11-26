@@ -4,7 +4,12 @@ import SwiftUI
 /// cards without them show a dashed "Incomplete" row with an "Add details" link.
 struct ReviewCardRow: View {
     let card: TrackedCard
+    /// What to call the card. The store adds a number when the user has several copies of it.
+    /// Defaults to the card's name.
+    var title: String? = nil
     let onEdit: () -> Void
+
+    private var displayTitle: String { title ?? card.catalogCard.displayName }
 
     var body: some View {
         if card.detailsComplete {
@@ -22,7 +27,7 @@ struct ReviewCardRow: View {
                 CardBadge(card: card.catalogCard)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(card.catalogCard.displayName)
+                    Text(displayTitle)
                         .font(.app(16, .semibold))
                         .foregroundStyle(Theme.textPrimary)
                     Text(subtitle)
@@ -85,7 +90,7 @@ struct ReviewCardRow: View {
             CardBadge(card: card.catalogCard, isMuted: true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(card.catalogCard.displayName)
+                Text(displayTitle)
                     .font(.app(16, .semibold))
                     .foregroundStyle(Theme.textSecondary)
                 Text("Incomplete")

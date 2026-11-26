@@ -34,7 +34,7 @@ struct ReviewView: View {
 
                 VStack(spacing: 12) {
                     ForEach(store.cards) { card in
-                        ReviewCardRow(card: card) {
+                        ReviewCardRow(card: card, title: store.title(of: card)) {
                             store.path.append(.editCard(card.id))
                         }
                     }
