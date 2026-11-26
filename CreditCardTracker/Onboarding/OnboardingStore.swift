@@ -38,6 +38,10 @@ final class OnboardingStore: ObservableObject {
     @Published private(set) var selectedCatalogIDs: [String] = []
     /// The picked cards with their details. Rebuilt each time the user continues from "Pick your cards".
     @Published private(set) var cards: [TrackedCard] = []
+    /// Cards the user marked as paid: the card's ID and the due day that was paid. Kept only while the app
+    /// is open for now; it is saved with the cards once accounts are built. It wears off by itself, because
+    /// once that due day has passed it no longer matches the coming one.
+    @Published private(set) var paidDueDates: [UUID: Date] = [:]
 
     /// Catalog IDs of the cards the user already had when they tapped "Add another card". They show
     /// as ticked and cannot be changed on the second pick screen.
@@ -177,6 +181,17 @@ final class OnboardingStore: ObservableObject {
         cards[index].details = details
     }
 
+    /// Marks a card's payment for `dueDate` as paid. The home screen then moves on to the next month's due day.
+    func markPaid(_ id: UUID, dueDate: Date, calendar: Calendar = .current) {
+        guard cards.contains(where: { $0.id == id }) else { return }
+        paidDueDates[id] = calendar.startOfDay(for: dueDate)
+    }
+
+    /// Takes back "Mark paid".
+    func undoPaid(_ id: UUID) {
+        paidDueDates[id] = nil
+    }
+
     /// Sets the name of a not-listed card as the user types it. Catalog cards keep their names.
     func setCustomName(_ name: String, for id: UUID) {
         guard let index = cards.firstIndex(where: { $0.id == id }), cards[index].catalogCard.isCustom else { return }
@@ -208,6 +223,7 @@ final class OnboardingStore: ObservableObject {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
         let removed = cards.remove(at: index)
         selectedCatalogIDs.removeAll { $0 == removed.catalogCard.id }
+        paidDueDates[id] = nil
 
         if cards.isEmpty {
             // Nothing left: back to picking cards.

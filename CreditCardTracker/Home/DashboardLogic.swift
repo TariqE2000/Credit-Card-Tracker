@@ -126,8 +126,17 @@ struct DashboardCard: Identifiable, Hashable {
     /// what the user typed, because the due day repeats every month.
     let dueOnText: String
     let daysUntilDue: Int
+    /// The day this card is due next, as a date. If this month's payment is marked paid, it is next month's.
+    let nextDueDate: Date
+    /// True when this month's payment was marked paid. The due date above is then the one after it.
+    let isPaid: Bool
 
     var id: UUID { card.id }
+    /// The bank's page to open from the Pay button. Nil when there is no link for the bank, or the
+    /// payment is already marked paid.
+    var payURL: URL? { isPaid ? nil : PayLinks.url(for: card.catalogCard) }
+    /// "Pay Chase", or just "Pay" for a long bank name.
+    var payTitle: String { PayLinks.buttonTitle(for: card.catalogCard) }
     var apr: Decimal? { card.details.apr }
     var urgency: DueUrgency { DueUrgency(daysUntilDue: daysUntilDue) }
 
@@ -146,12 +155,27 @@ struct DashboardCard: Identifiable, Hashable {
     }
 
     /// Nil when the card has no complete details, or no due day can be worked out.
-    init?(_ card: TrackedCard, today: Date, calendar: Calendar) {
+    ///
+    /// `paidDue` is the due day the user marked as paid. When it is the card's coming due day, that day is
+    /// skipped and the card shows the one after it. A paid day that is not the coming one is ignored,
+    /// which is how "paid" wears off by itself once the due day has passed.
+    init?(_ card: TrackedCard, paidDue: Date? = nil, today: Date, calendar: Calendar) {
         guard let balance = card.details.balance,
               let minimumPayment = card.details.minimumPayment,
               let dueDate = card.details.dueDate,
-              let next = dueDate.nextDue(onOrAfter: today, calendar: calendar),
-              let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: today), to: next).day
+              let coming = dueDate.nextDue(onOrAfter: today, calendar: calendar)
+        else { return nil }
+
+        var next = coming
+        var paid = false
+        if let paidDue, calendar.isDate(paidDue, inSameDayAs: coming),
+           let dayAfter = calendar.date(byAdding: .day, value: 1, to: coming),
+           let following = dueDate.nextDue(onOrAfter: dayAfter, calendar: calendar) {
+            next = following
+            paid = true
+        }
+
+        guard let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: today), to: next).day
         else { return nil }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US")
@@ -164,6 +188,8 @@ struct DashboardCard: Identifiable, Hashable {
         self.minimumPayment = minimumPayment
         self.dueDate = dueDate
         self.daysUntilDue = days
+        self.nextDueDate = next
+        self.isPaid = paid
     }
 }
 
@@ -184,11 +210,18 @@ struct DashboardData {
     /// The card due soonest.
     let nextDue: DashboardCard?
 
-    init(cards tracked: [TrackedCard], sortedBy sort: CardSort, today: Date = Date(), calendar: Calendar = .current) {
+    /// `paid` holds, for each card the user marked as paid, the due day that was paid.
+    init(
+        cards tracked: [TrackedCard],
+        sortedBy sort: CardSort,
+        paid: [UUID: Date] = [:],
+        today: Date = Date(),
+        calendar: Calendar = .current
+    ) {
         var complete: [DashboardCard] = []
         var missing: [TrackedCard] = []
         for card in tracked {
-            if let item = DashboardCard(card, today: today, calendar: calendar) {
+            if let item = DashboardCard(card, paidDue: paid[card.id], today: today, calendar: calendar) {
                 complete.append(item)
             } else {
                 missing.append(card)

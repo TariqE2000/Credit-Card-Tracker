@@ -25,10 +25,13 @@ final class DashboardTests: XCTestCase {
         balance: String?,
         minimum: String?,
         due: (month: Int, day: Int)?,
-        apr: String? = nil
+        apr: String? = nil,
+        issuerID: String? = nil
     ) -> TrackedCard {
         TrackedCard(
-            catalogCard: CatalogCard(id: "test-\(name)", name: name, issuer: issuer, badgeCode: "XX", badgeColorHex: 0x000000),
+            catalogCard: CatalogCard(
+                id: "test-\(name)", name: name, issuer: issuer, badgeCode: "XX", badgeColorHex: 0x000000, issuerID: issuerID
+            ),
             details: CardDetails(
                 balance: balance.map { amount($0) },
                 minimumPayment: minimum.map { amount($0) },
@@ -50,8 +53,13 @@ final class DashboardTests: XCTestCase {
         ]
     }
 
-    private func data(sortedBy sort: CardSort = .dueDate, today: Date? = nil, cards: [TrackedCard]? = nil) -> DashboardData {
-        DashboardData(cards: cards ?? sample, sortedBy: sort, today: today ?? self.today, calendar: calendar)
+    private func data(
+        sortedBy sort: CardSort = .dueDate,
+        today: Date? = nil,
+        cards: [TrackedCard]? = nil,
+        paid: [UUID: Date] = [:]
+    ) -> DashboardData {
+        DashboardData(cards: cards ?? sample, sortedBy: sort, paid: paid, today: today ?? self.today, calendar: calendar)
     }
 
     private func names(_ sort: CardSort) -> [String] {
@@ -153,6 +161,97 @@ final class DashboardTests: XCTestCase {
     func testNoBannerWhenNothingIsDueWithinTheWeek() {
         let farAway = [card("Citi Double Cash", issuer: "Citi", balance: "1890.22", minimum: "60", due: (12, 14))]
         XCTAssertNil(data(cards: farAway).dueSoon)
+    }
+
+    // MARK: Mark paid
+
+    /// `sample` makes new cards every time, so the paid tests build it once and keep it.
+    func testMarkingAPaymentPaidMovesTheCardToNextMonth() {
+        let cards = sample
+        let chase = cards[0]
+        let item = data(cards: cards, paid: [chase.id: day(2026, 11, 28)]).cards.first { $0.id == chase.id }
+        XCTAssertEqual(item?.isPaid, true)
+        XCTAssertEqual(item?.dueOnText, "Dec 28")
+        XCTAssertEqual(item?.daysUntilDue, 32)
+    }
+
+    func testAPaidCardLeavesTheBannerAndTheDueSoonTotal() {
+        let cards = sample
+        let result = data(cards: cards, paid: [cards[0].id: day(2026, 11, 28)])
+        // Capital One (Dec 3, in 7 days) is next now.
+        XCTAssertEqual(result.dueSoon?.card.catalogCard.name, "Capital One Quicksilver")
+        XCTAssertEqual(result.nextDue?.card.catalogCard.name, "Capital One Quicksilver")
+        XCTAssertEqual(result.dueSoonTotal, amount("35"))
+    }
+
+    func testMarkingPaidDoesNotChangeBalanceOrMinimumTotals() {
+        let cards = sample
+        let result = data(cards: cards, paid: [cards[0].id: day(2026, 11, 28)])
+        XCTAssertEqual(result.totalBalance, amount("6990.77"))
+        XCTAssertEqual(result.totalMinimums, amount("230"))
+    }
+
+    func testAPaidCardMovesToTheEndWhenSortedByDueDate() {
+        let cards = sample
+        let result = data(cards: cards, paid: [cards[0].id: day(2026, 11, 28)])
+        XCTAssertEqual(result.cards.last?.card.catalogCard.name, "Chase Sapphire Preferred")
+    }
+
+    func testPaidForAnotherDueDayIsIgnored() {
+        let cards = sample
+        // A past due day and a day further ahead than the coming one: neither is the coming payment.
+        for paidDay in [day(2026, 10, 28), day(2026, 12, 28)] {
+            let item = data(cards: cards, paid: [cards[0].id: paidDay]).cards.first { $0.id == cards[0].id }
+            XCTAssertEqual(item?.isPaid, false)
+            XCTAssertEqual(item?.dueOnText, "Nov 28")
+        }
+    }
+
+    func testPaidWearsOffOnceTheDueDayHasPassed() {
+        let cards = sample
+        // Nov 28 was marked paid. On Nov 29 the coming due day is Dec 28, which was not paid.
+        let item = data(today: day(2026, 11, 29), cards: cards, paid: [cards[0].id: day(2026, 11, 28)])
+            .cards.first { $0.id == cards[0].id }
+        XCTAssertEqual(item?.isPaid, false)
+        XCTAssertEqual(item?.dueOnText, "Dec 28")
+        XCTAssertEqual(item?.daysUntilDue, 29)
+    }
+
+    func testPaidOnTheLastDayOfAShortMonthLandsOnTheNextMonthsLastDay() {
+        // Due on the 31st, paid on Jan 31. February has 28 days in 2027.
+        let cards = [card("Card", issuer: "Bank", balance: "100", minimum: "25", due: (1, 31))]
+        let item = data(today: day(2027, 1, 30), cards: cards, paid: [cards[0].id: day(2027, 1, 31)]).cards.first
+        XCTAssertEqual(item?.dueOnText, "Feb 28")
+        XCTAssertEqual(item?.daysUntilDue, 29)
+    }
+
+    func testDueTodayCanBeMarkedPaid() {
+        let cards = [card("Card", issuer: "Bank", balance: "100", minimum: "25", due: (11, 26))]
+        let item = data(cards: cards, paid: [cards[0].id: day(2026, 11, 26)]).cards.first
+        XCTAssertEqual(item?.isPaid, true)
+        XCTAssertEqual(item?.dueOnText, "Dec 26")
+        XCTAssertNil(data(cards: cards, paid: [cards[0].id: day(2026, 11, 26)]).dueSoon)
+    }
+
+    func testAPaidCardHasNoPayLink() {
+        let cards = [card("Card", issuer: "Chase", balance: "100", minimum: "25", due: (11, 28), issuerID: "chase")]
+        XCTAssertNotNil(data(cards: cards).cards.first?.payURL)
+        XCTAssertNil(data(cards: cards, paid: [cards[0].id: day(2026, 11, 28)]).cards.first?.payURL)
+    }
+
+    // MARK: Pay links on cards
+
+    func testCardsGetTheirBanksPayLinkAndTitle() {
+        let cards = [
+            card("Sapphire", issuer: "Chase", balance: "1", minimum: "1", due: (11, 28), issuerID: "chase"),
+            card("Apple Card", issuer: "Apple", balance: "1", minimum: "1", due: (11, 28)),
+        ]
+        let result = data(cards: cards).cards
+        let sapphire = result.first { $0.card.catalogCard.name == "Sapphire" }
+        let apple = result.first { $0.card.catalogCard.name == "Apple Card" }
+        XCTAssertEqual(sapphire?.payURL?.host, "www.chase.com")
+        XCTAssertEqual(sapphire?.payTitle, "Pay Chase")
+        XCTAssertNil(apple?.payURL)
     }
 
     // MARK: Sorting
