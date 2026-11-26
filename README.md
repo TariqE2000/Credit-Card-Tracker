@@ -8,8 +8,8 @@ If you carry several credit cards, the numbers that matter (what you owe, the mi
 is due) are scattered across a different app or statement for each issuer. Credit Card Tracker puts them on
 one screen so you can see your total balance and what is due next without logging in to anything.
 
-> **Status: early MVP.** The onboarding flow is built. The home screen, real sign-in and saving your
-> data are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
+> **Status: early MVP.** The onboarding flow and the home screen are built. Paying from the app, extra
+> views (calendar, chart and more), real sign-in and saving your data are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
 
 ## How it works
 
@@ -55,12 +55,23 @@ The onboarding flow, one screen per pull request:
 There is deliberately no back button or swipe-back on the Review screen, because everything on it can be
 edited in place.
 
-After you confirm, a placeholder screen shows how many cards you are tracking. The real home screen is
-the next piece of design work.
+After you confirm, the home screen shows your total balance, your total minimum payments, how much is due
+in the next 7 days, and the card due next. Below that is every card, with its due date, balance and minimum
+payment. The button above the list ("Due date") opens a menu to sort by due date, balance, minimum payment,
+bank or interest rate, and the app remembers your choice. A card missing details is listed last and left out
+of the totals.
+
+A due date repeats every month, so the home screen works out the next date from the day you entered: a card
+entered as "Dec 14" is due on the 14th of every month. In a month too short for that day, the last day of the
+month is used.
 
 ## What is not built yet
 
-- **Home screen.** Not designed yet. A placeholder stands in.
+- **Pay buttons.** The plan is a hand-made list of each bank's own login page that opens in the app's
+  browser. Nothing is built for it yet.
+- **More ways to see your cards.** Calendar, tiles, by bank, by week, a balance chart and highest interest
+  first are designed but not built.
+- **Editing a card from the home screen.** A card missing details cannot be filled in from there yet.
 - **Real sign-in.** The plan is Supabase Auth with Sign in with Apple and Google. The code has
   `TODO(supabase)` markers where the token exchange goes.
 - **Saving your data.** Everything lives in memory. If you quit the app, your cards are gone. The plan is
@@ -151,7 +162,7 @@ CreditCardTracker/
     FormInput.swift         Reads and formats what the user types
     Screens/                Sign up, Log in, Pick cards, Card form, Review
     Components/             Rows, form pieces, social buttons, due date picker sheet
-  Home/           Placeholder home screen
+  Home/           Home screen (DashboardView) and its sorting and due date logic
 CreditCardTrackerTests/     Unit tests
 ```
 
