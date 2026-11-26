@@ -47,7 +47,7 @@ struct ViewsPage: View {
     }
 
     var body: some View {
-        let data = DashboardData(cards: store.cards, sortedBy: sort, paid: store.paidDueDates)
+        let data = DashboardData(cards: store.cards, sortedBy: sort, paid: store.paidDueDates, settled: store.settledDueDates)
 
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {

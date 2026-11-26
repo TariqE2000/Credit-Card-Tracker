@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// "Due Nov 28 · in 2 days" with the second part colored by how soon, or "Paid · next due Dec 28".
+/// A card with a missed payment gets a red line first ("Missed Nov 20 · 6 days ago") and "Next due Dec 20" under it.
 /// With `showsWeekday` the date reads "Sat, Nov 28".
 struct DueLine: View {
     let item: DashboardCard
@@ -20,7 +21,23 @@ struct DueLine: View {
     }
 
     var body: some View {
-        if item.isPaid {
+        if let missed = item.missedLineText {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .top, spacing: 5) {
+                    Image(systemName: "exclamationmark.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.danger)
+                        .padding(.top, 3)
+                        .accessibilityHidden(true)
+                    Text(missed)
+                        .font(.app(13, .semibold))
+                        .foregroundStyle(Theme.danger)
+                }
+                Text("Next due \(dateText)")
+                    .font(.app(13))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        } else if item.isPaid {
             HStack(spacing: 4) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 12))

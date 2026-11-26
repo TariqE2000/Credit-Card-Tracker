@@ -26,11 +26,15 @@ final class CardSheetTests: XCTestCase {
         store.continueFromPickCards()
         store.saveDetails(
             CardDetails(balance: 100, minimumPayment: 25, dueDate: DueDate(month: 11, day: 28), apr: nil),
-            for: store.cards[0].id
+            for: store.cards[0].id,
+            today: today,
+            calendar: calendar
         )
         store.saveDetails(
             CardDetails(balance: 200, minimumPayment: 35, dueDate: DueDate(month: 12, day: 14), apr: nil),
-            for: store.cards[1].id
+            for: store.cards[1].id,
+            today: today,
+            calendar: calendar
         )
         return store
     }
@@ -40,6 +44,7 @@ final class CardSheetTests: XCTestCase {
             cards: store.cards,
             sortedBy: .dueDate,
             paid: store.paidDueDates,
+            settled: store.settledDueDates,
             today: today ?? self.today,
             calendar: calendar
         )
@@ -154,7 +159,9 @@ final class CardSheetTests: XCTestCase {
         // Due on the 31st. Today is Jan 30, 2027, so the coming day is Jan 31 and the one after is Feb 28.
         store.saveDetails(
             CardDetails(balance: 100, minimumPayment: 25, dueDate: DueDate(month: 1, day: 31), apr: nil),
-            for: id
+            for: id,
+            today: day(2027, 1, 30),
+            calendar: calendar
         )
         let card = try item(id, in: store, today: day(2027, 1, 30))
         XCTAssertEqual(card.dueOnText, "Jan 31")

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// What opens when you tap a card that has its details filled in: the card's numbers, "Pay Chase",
 /// one button that follows whether this month's payment is marked as paid ("Mark paid" or "Mark unpaid"),
-/// and "Edit card details".
+/// and "Edit card details". A card with missed payments also gets a note, and "Mark paid" clears them.
 ///
 /// The sheet reads the card from the store each time it draws, so it changes the moment the button is tapped.
 struct CardSheet: View {
@@ -19,7 +19,7 @@ struct CardSheet: View {
 
     /// The card as it is right now. Nil if it was removed, or lost a detail.
     private var item: DashboardCard? {
-        DashboardData(cards: store.cards, sortedBy: .dueDate, paid: store.paidDueDates)
+        DashboardData(cards: store.cards, sortedBy: .dueDate, paid: store.paidDueDates, settled: store.settledDueDates)
             .cards.first { $0.id == cardID }
     }
 
@@ -54,6 +54,17 @@ struct CardSheet: View {
             header(item)
             numbers(item)
 
+            if let notice = item.missedNotice {
+                Text(notice)
+                    .font(.app(13))
+                    .foregroundStyle(Theme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Theme.danger.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
             if let url = item.payURL {
                 Button { openURL(url) } label: {
                     HStack(spacing: 6) {
@@ -72,8 +83,8 @@ struct CardSheet: View {
                     store.togglePaid(item)
                 } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: item.isPaid ? "arrow.uturn.backward" : "checkmark.circle")
-                        Text(item.isPaid ? "Mark unpaid" : "Mark paid")
+                        Image(systemName: showsUnpaid(item) ? "arrow.uturn.backward" : "checkmark.circle")
+                        Text(showsUnpaid(item) ? "Mark unpaid" : "Mark paid")
                     }
                 }
                 .buttonStyle(SecondaryButtonStyle())
@@ -104,7 +115,11 @@ struct CardSheet: View {
                     .font(.app(18, .bold))
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                DueLine(item: item)
+                if item.isMissed {
+                    missedLine(item)
+                } else {
+                    DueLine(item: item)
+                }
             }
 
             Spacer(minLength: 0)
@@ -112,10 +127,33 @@ struct CardSheet: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// "Missed Nov 20 · 6 days ago": the first part in red, the rest in gray.
+    private func missedLine(_ item: DashboardCard) -> some View {
+        HStack(alignment: .top, spacing: 5) {
+            Image(systemName: "exclamationmark.circle")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.danger)
+                .padding(.top, 3)
+                .accessibilityHidden(true)
+            Text(item.missedHeadline ?? "")
+                .font(.app(13, .semibold))
+                .foregroundStyle(Theme.danger)
+            + Text(item.missedTail.map { " · \($0)" } ?? "")
+                .font(.app(13))
+                .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
     private func numbers(_ item: DashboardCard) -> some View {
         HStack(alignment: .top, spacing: 12) {
             stat("Balance", item.balance.usd)
-            stat("Minimum payment", item.minimumPayment.usd)
+            if item.isMissed {
+                // Three columns need the shorter name. "Next due" is the coming payment, not a missed one.
+                stat("Minimum", item.minimumPayment.usd)
+                stat("Next due", item.dueOnText)
+            } else {
+                stat("Minimum payment", item.minimumPayment.usd)
+            }
         }
         .padding(.vertical, 14)
         .overlay(alignment: .top) { Theme.border.frame(height: 1) }
@@ -141,8 +179,15 @@ struct CardSheet: View {
         item.card.catalogCard.displayName
     }
 
+    /// "Mark unpaid" only when the coming payment is marked paid and nothing is missed. With missed payments
+    /// the button is "Mark paid", and it clears them.
+    private func showsUnpaid(_ item: DashboardCard) -> Bool {
+        item.isPaid && !item.isMissed
+    }
+
     /// The line under the button: where "Mark paid" moves the card to, or what "Mark unpaid" brings back.
     private func caption(_ item: DashboardCard) -> String {
+        if let missed = item.missedCaption { return missed }
         if item.isPaid {
             if let paid = item.paidDueText {
                 return "Brings this month's \(paid) due date back."
