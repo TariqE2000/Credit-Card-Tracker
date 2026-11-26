@@ -35,6 +35,12 @@ enum IssuerStyle {
         cardOverrides[id] ?? style(forIssuerID: issuerID, issuerName: issuerName)
     }
 
+    /// True for a card that has its own look (see `cardOverrides`). Such a card must not pick up a logo
+    /// bundled for its issuer: the Apple Card would show Goldman Sachs' logo.
+    static func hasOwnStyle(forCardID id: String) -> Bool {
+        cardOverrides[id] != nil
+    }
+
     // MARK: Known issuers
 
     /// Colors the app already used for these issuers.
@@ -58,8 +64,10 @@ enum IssuerStyle {
         "citizens": "CZ",
     ]
 
-    /// The issuer's website, used to ask LogoAPI.sh for its logo. Chase and Citi are left out because
-    /// LogoAPI.sh does not have them. If a logo is not found, the colored badge stays.
+    /// The issuer's website, used to ask LogoAPI.sh for its logo. This is the second choice: a logo
+    /// bundled in the app (`BundledLogo`) wins. Chase and Citi are left out because LogoAPI.sh does not
+    /// have them. Only Synchrony is confirmed to be in LogoAPI.sh among the issuers with no bundled
+    /// logo; for the others (PenFed, BMO, Credit One, FNBO) the colored badge stays if it is not found.
     private static let logoDomains: [String: String] = [
         "amex": "americanexpress.com",
         "capital-one": "capitalone.com",
