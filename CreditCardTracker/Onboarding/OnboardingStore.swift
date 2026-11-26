@@ -220,9 +220,21 @@ final class OnboardingStore: ObservableObject {
         paidDueDates[id] = calendar.startOfDay(for: dueDate)
     }
 
-    /// Takes back "Mark paid".
+    /// Takes back "Mark paid". On a card sheet this is "Mark unpaid": the due day comes back.
     func undoPaid(_ id: UUID) {
         paidDueDates[id] = nil
+    }
+
+    /// The button on a card's sheet: "Mark paid" when the coming payment is not marked yet, "Mark unpaid"
+    /// when it is. Returns true when the card is now marked as paid.
+    @discardableResult
+    func togglePaid(_ item: DashboardCard, calendar: Calendar = .current) -> Bool {
+        if item.isPaid {
+            undoPaid(item.id)
+            return false
+        }
+        markPaid(item.id, dueDate: item.nextDueDate, calendar: calendar)
+        return paidDueDates[item.id] != nil
     }
 
     /// Sets the name of a not-listed card as the user types it. Catalog cards keep their names.

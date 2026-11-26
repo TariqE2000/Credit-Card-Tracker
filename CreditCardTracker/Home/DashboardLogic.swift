@@ -130,6 +130,11 @@ struct DashboardCard: Identifiable, Hashable {
     let nextDueDate: Date
     /// True when this month's payment was marked paid. The due date above is then the one after it.
     let isPaid: Bool
+    /// The due day that was marked as paid, like "Dec 6" when `dueOnText` is "Jan 6". Nil when nothing is marked.
+    let paidDueText: String?
+    /// The due day after the one above, like "Dec 28" when `dueOnText` is "Nov 28". It is where "Mark paid" moves
+    /// the card to. Nil when it cannot be worked out.
+    let afterDueText: String?
 
     var id: UUID { card.id }
     /// The bank's page to open from the Pay button. Nil when there is no link for the bank, or the
@@ -168,11 +173,13 @@ struct DashboardCard: Identifiable, Hashable {
 
         var next = coming
         var paid = false
+        var paidDay: Date?
         if let paidDue, calendar.isDate(paidDue, inSameDayAs: coming),
            let dayAfter = calendar.date(byAdding: .day, value: 1, to: coming),
            let following = dueDate.nextDue(onOrAfter: dayAfter, calendar: calendar) {
             next = following
             paid = true
+            paidDay = coming
         }
 
         guard let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: today), to: next).day
@@ -183,6 +190,10 @@ struct DashboardCard: Identifiable, Hashable {
         formatter.timeZone = calendar.timeZone
         formatter.dateFormat = "MMM d"
         self.dueOnText = formatter.string(from: next)
+        self.paidDueText = paidDay.map { formatter.string(from: $0) }
+        let after = calendar.date(byAdding: .day, value: 1, to: next)
+            .flatMap { dueDate.nextDue(onOrAfter: $0, calendar: calendar) }
+        self.afterDueText = after.map { formatter.string(from: $0) }
         self.card = card
         self.balance = balance
         self.minimumPayment = minimumPayment

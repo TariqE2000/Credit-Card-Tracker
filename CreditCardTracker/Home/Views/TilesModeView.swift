@@ -132,7 +132,7 @@ private struct CardTile: View {
                 .padding(.bottom, item.payURL == nil ? 14 : 0)
             }
             .buttonStyle(RowButtonStyle())
-            .accessibilityHint("Edit this card")
+            .accessibilityHint("Opens this card to pay or mark it paid")
 
             if let url = item.payURL {
                 Button { onPay(url) } label: {
