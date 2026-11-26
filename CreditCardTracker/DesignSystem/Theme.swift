@@ -48,6 +48,8 @@ enum Theme {
     static let accentText = Color(light: 0x5B4CF0, dark: 0x9A8FFF)
     /// Fill behind a selected row.
     static let accentTint = Color(light: 0xEAE8FC, dark: 0x27244D)
+    /// Supporting text on `accentTint`. A little darker than `textSecondary` so it stays readable there.
+    static let textSecondaryOnTint = Color(light: 0x55556A, dark: 0x9C9CA6)
 
     // Status
     static let danger = Color(light: 0xD9363E, dark: 0xFF7A7A)
