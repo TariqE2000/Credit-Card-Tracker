@@ -16,12 +16,22 @@ struct CatalogCard: Identifiable, Hashable, Codable {
     /// The issuer's website, used to look up its logo, e.g. "capitalone.com". Nil when the logo service
     /// does not have the issuer; the colored badge is shown instead.
     var logoDomain: String? = nil
+    /// The issuer's ID in opencard-db, e.g. "chase". Names the logo bundled in the app, if there is one.
+    /// Nil for not-listed cards, and for a list saved by an older version of the app.
+    var issuerID: String? = nil
 }
 
 // MARK: - Issuer logos
 
-/// Issuer logos come from LogoAPI.sh: free, no key, no sign-up and no attribution.
+/// Where an issuer's logo comes from, best first:
+/// 1. A logo bundled in the app (`bundledLogoName`): instant, works offline, nothing to download.
+/// 2. LogoAPI.sh (`logoURL`): free, no key, no sign-up and no attribution.
+/// 3. The colored badge with the issuer's letters, which is always underneath.
 enum LogoService {
+    /// Where the credit line under the card list points. selfh.st supplies most of the bundled logos
+    /// and asks for credit (CC BY 4.0).
+    static let creditURL = URL(string: "https://selfh.st/icons/")!
+
     /// The square icon for a website, as a PNG (an image view on iOS cannot draw SVG).
     /// `fallback=404` makes a missing logo come back as an error, so the app shows its own colored
     /// badge instead of a stand-in picture. `size` snaps to 128, 256, 512 or 1024.
@@ -63,6 +73,12 @@ extension CatalogCard {
     /// Where to load this card's issuer logo from. Nil when there is none to try.
     var logoURL: URL? {
         logoDomain.flatMap { LogoService.iconURL(forDomain: $0) }
+    }
+
+    /// The name an image set in `Assets.xcassets/IssuerLogos` would have for this card's issuer, e.g.
+    /// "logo-chase". The app may not have that image: use `BundledLogo.imageName(for:)` to find out.
+    var bundledLogoName: String? {
+        issuerID.map { "logo-\($0)" }
     }
 }
 

@@ -27,7 +27,9 @@ struct FileCardCatalogCache: CardCatalogCaching {
             ?? FileManager.default.temporaryDirectory
         return base
             .appendingPathComponent("CardCatalog", isDirectory: true)
-            .appendingPathComponent("us-cards.json")
+            // "-v2": cards in the first version of this file have no issuer ID, which the bundled logos
+            // need. A new name makes the app download the list once more and save it with IDs.
+            .appendingPathComponent("us-cards-v2.json")
     }
 
     func load() -> CachedCatalog? {

@@ -114,6 +114,16 @@ final class OpenCardMapperTests: XCTestCase {
         XCTAssertEqual(amex.logoDomain, "americanexpress.com")
     }
 
+    func testEveryCardRemembersItsIssuerSoItCanFindABundledLogo() throws {
+        let data = try jsonData([
+            cardRecord("us-chase-x", "Chase X", issuer: "Chase", issuerID: "chase"),
+            cardRecord("us-navy-x", "Navy X", issuer: "Navy Federal Credit Union", issuerID: "navy-federal"),
+        ])
+        let cards = try OpenCardMapper.catalogCards(from: data, minimumCount: 1)
+        XCTAssertEqual(cards.first { $0.id == "us-chase-x" }?.issuerID, "chase")
+        XCTAssertEqual(cards.first { $0.id == "us-navy-x" }?.issuerID, "navy-federal")
+    }
+
     func testAppleCardIsStyledAsAppleEvenThoughGoldmanSachsIssuesIt() throws {
         let data = try jsonData([
             cardRecord("us-apple-card", "Apple Card", issuer: "Goldman Sachs", issuerID: "goldman-sachs"),
@@ -122,6 +132,7 @@ final class OpenCardMapperTests: XCTestCase {
         XCTAssertEqual(card.issuer, "Goldman Sachs")
         XCTAssertEqual(card.badgeCode, "AP")
         XCTAssertEqual(card.logoDomain, "apple.com")
+        XCTAssertNil(card.issuerID, "Apple Card must not pick up the Goldman Sachs logo")
     }
 
     func testUnknownIssuerGetsLettersAndAColorFromThePalette() throws {

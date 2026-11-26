@@ -101,21 +101,26 @@ opencard-db (CC BY 4.0)" and links to the project.
 
 ## Issuer logos
 
-Logos come from [LogoAPI.sh](https://logoapi.sh), which needs no key, no sign-up and no attribution on its
-free tier (capped at 2 million requests a month per site).
+A card's logo comes from the first of these that works (details in [docs/issuer-logos.md](docs/issuer-logos.md)):
 
-- Each card can carry a `logoDomain`, the issuer's website, such as `capitalone.com`. The table of
-  domains is in `IssuerStyle`.
-- The app asks for `https://logoapi.sh/icon/{domain}.png` as a PNG, because iOS image views cannot draw
-  SVG, with `fallback=404` so a missing logo comes back as an error instead of a stand-in picture.
-- The logo is shown on a white tile in the card's badge once it has loaded. **If it cannot load, the
-  colored badge with the issuer's initials stays.** The colored badge is always underneath, so the screen
-  never has a blank spot.
-- Chase and Citi are not in LogoAPI.sh's catalog, so those cards show the colored badge.
-- In debug builds, a failed logo prints lines starting with `[Logo]` in the Xcode console explaining why.
+1. **A logo bundled in the app.** 25 issuers (311 of the 435 US cards) have a picture stored inside the
+   app, in `Assets.xcassets/IssuerLogos`. It shows instantly and works offline; nothing is hosted or
+   downloaded. Each card carries its issuer's opencard-db ID, and the app looks for the image
+   `logo-<issuer-id>`, e.g. `logo-chase`.
+2. **[LogoAPI.sh](https://logoapi.sh).** For an issuer with no bundled logo but a website in `logoDomains`
+   (`IssuerStyle`), the app downloads the logo while it runs: free, no key, no sign-up, no attribution
+   (capped at 2 million requests a month per site). Synchrony is confirmed to be there; a few other
+   issuers (PenFed, BMO, Credit One, FNBO) are not checked and keep the badge if it is missing. The app asks for a PNG with
+   `fallback=404`, so a missing logo comes back as an error instead of a stand-in picture.
+3. **The colored badge** with the issuer's initials. It is always underneath, so the screen never has a
+   blank spot.
 
-To add a logo for another issuer, add its opencard-db issuer ID and website to `logoDomains` in
-`IssuerStyle`.
+The other 25 issuers (98 cards) show the colored badge until their logos are added. To add one, run
+`scripts/add-logo.sh <issuer-id> <logo.svg>` (see [docs/issuer-logos.md](docs/issuer-logos.md)). Cards
+with their own look, such as Apple Card, never pick up their bank's logo.
+
+In debug builds, a LogoAPI.sh logo that fails to load prints lines starting with `[Logo]` in the Xcode
+console explaining why.
 
 ## Tech
 
@@ -200,7 +205,12 @@ picker, add another card, issuer logos, a README rewrite, and the card list from
 
 - Card list: [opencard-db](https://github.com/thedavidweng/opencard-db) by David Weng, code MIT, data
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-- Issuer logos: [LogoAPI.sh](https://logoapi.sh).
+- Issuer logos: bundled logos from [selfh.st icons](https://selfh.st/icons/)
+  ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)),
+  [VectorLogoZone](https://www.vectorlogo.zone) and
+  [College-Canine/financial](https://github.com/College-Canine/financial) (MIT), and
+  [LogoAPI.sh](https://logoapi.sh) for the rest. Each logo belongs to its owner; the full list is in
+  [docs/issuer-logos.md](docs/issuer-logos.md).
 
 ## License
 

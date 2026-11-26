@@ -59,7 +59,9 @@ enum OpenCardMapper {
                 issuer: issuer,
                 badgeCode: style.code,
                 badgeColorHex: style.colorHex,
-                logoDomain: style.logoDomain
+                logoDomain: style.logoDomain,
+                // A card with its own look keeps it, so it has no issuer logo (see `IssuerStyle.hasOwnStyle`).
+                issuerID: IssuerStyle.hasOwnStyle(forCardID: id) ? nil : record.issuerID
             )
             entries.append((card, record.issuerID))
         }

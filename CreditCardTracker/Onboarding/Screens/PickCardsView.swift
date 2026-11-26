@@ -186,11 +186,21 @@ struct PickCardsView: View {
 
     /// The credit that opencard-db's license (CC BY 4.0) asks for.
     private var creditLine: some View {
-        Link(destination: CardCatalogSource.repositoryURL) {
-            Text("Card list from opencard-db (CC BY 4.0)")
-                .font(.app(12))
-                .foregroundStyle(Theme.textSecondary)
-                .underline()
+        VStack(spacing: 6) {
+            Link(destination: CardCatalogSource.repositoryURL) {
+                Text("Card list from opencard-db (CC BY 4.0)")
+                    .font(.app(12))
+                    .foregroundStyle(Theme.textSecondary)
+                    .underline()
+            }
+            // selfh.st's license (CC BY 4.0) asks for credit. The other logos are credited in the README.
+            Link(destination: LogoService.creditURL) {
+                Text("Logos from selfh.st/icons (CC BY 4.0) and others. Each logo belongs to its owner.")
+                    .font(.app(12))
+                    .foregroundStyle(Theme.textSecondary)
+                    .underline()
+                    .multilineTextAlignment(.center)
+            }
         }
         .padding(.top, 12)
         .padding(.bottom, 8)
