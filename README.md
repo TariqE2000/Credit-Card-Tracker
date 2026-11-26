@@ -74,10 +74,15 @@ own web page (for example "Pay Chase"), where you sign in and pay. It opens the 
 iPhone: in Safari, or in the bank's app if you have it and the bank has set that link up to open there.
 The app never sees your bank password or card number and never makes a payment itself. **Mark paid** moves
 the card on to next month's due date, so the banner and "due in 7 days" stop counting it, and a bar at the
-bottom offers **Undo** for a few seconds. A paid card shows "Paid · next due Dec 28" and can be un-marked
-by pressing and holding it. Pressing and holding any card also offers Mark paid, for cards that are not
-the next one due. Mark paid does not change the balance you entered. It wears off by itself once the due
-day has passed, and for now it is only remembered while the app is open.
+bottom offers **Undo** for a few seconds.
+
+Every card also has its own **Mark paid** button, under its name on the home screen and in the Calendar,
+Tiles, By bank and By week views, so any card can be marked, not only the one in the banner. Once a card is
+paid the same spot says **Mark unpaid**, which puts its due date back. A paid card shows "Paid · next due
+Dec 28". In the Calendar the button appears only on the due day it acts on, not on the same card's due day
+in other months. Pressing and holding a card on the home screen offers the same. Mark paid does not change the
+balance you entered. It wears off by itself once the due day has passed, and for now it is only remembered
+while the app is open.
 
 Pay links are a hand-made list in `Home/PayLinks.swift`. Each entry holds the lender's name and its page
 together, so the button always names the lender it opens ("Pay Chase" opens Chase, "Pay Citi" opens Citi).

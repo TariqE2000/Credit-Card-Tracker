@@ -5,6 +5,7 @@ struct ByBankModeView: View {
     let data: DashboardData
     let onEdit: (UUID) -> Void
     let onPay: (URL) -> Void
+    let onTogglePaid: (DashboardCard) -> Void
 
     var body: some View {
         let groups = BankGroup.groups(from: data.cards)
@@ -22,7 +23,7 @@ struct ByBankModeView: View {
             }
 
             ForEach(groups) { group in
-                BankGroupCard(group: group, onEdit: onEdit, onPay: onPay)
+                BankGroupCard(group: group, onEdit: onEdit, onPay: onPay, onTogglePaid: onTogglePaid)
             }
 
             ForEach(data.incomplete) { card in
@@ -45,6 +46,7 @@ private struct BankGroupCard: View {
     let group: BankGroup
     let onEdit: (UUID) -> Void
     let onPay: (URL) -> Void
+    let onTogglePaid: (DashboardCard) -> Void
 
     /// Space to the left of the card lines: the row's padding, the badge and the gap after it.
     private static let textInset: CGFloat = 14 + 40 + 14
@@ -112,6 +114,21 @@ private struct BankGroupCard: View {
     }
 
     private func cardLine(_ item: DashboardCard) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            editLine(item)
+
+            PaidToggleButton(
+                isPaid: item.isPaid,
+                name: item.card.catalogCard.displayName,
+                action: { onTogglePaid(item) }
+            )
+            .padding(.leading, Self.textInset)
+            .padding(.trailing, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func editLine(_ item: DashboardCard) -> some View {
         Button { onEdit(item.id) } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -131,7 +148,8 @@ private struct BankGroupCard: View {
             .accessibilityElement(children: .combine)
             .padding(.leading, Self.textInset)
             .padding(.trailing, 14)
-            .padding(.vertical, 12)
+            .padding(.top, 12)
+            .padding(.bottom, 2)
             .contentShape(Rectangle())
         }
         .buttonStyle(RowButtonStyle())

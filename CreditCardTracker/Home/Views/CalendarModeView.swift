@@ -6,6 +6,7 @@ struct CalendarModeView: View {
     let data: DashboardData
     let onEdit: (UUID) -> Void
     let onPay: (URL) -> Void
+    let onTogglePaid: (DashboardCard) -> Void
 
     /// Any date inside the month on show.
     @State private var shownMonth = Date()
@@ -180,7 +181,8 @@ struct CalendarModeView: View {
                         date: day.date,
                         today: today,
                         onEdit: { onEdit(item.id) },
-                        onPay: onPay
+                        onPay: onPay,
+                        onTogglePaid: { onTogglePaid(item) }
                     )
                 }
             }
@@ -228,6 +230,7 @@ private struct CalendarDueRow: View {
     let today: Date
     let onEdit: () -> Void
     let onPay: (URL) -> Void
+    let onTogglePaid: () -> Void
 
     private var daysAway: Int {
         Calendar.current.dateComponents([.day], from: today, to: Calendar.current.startOfDay(for: date)).day ?? 0
@@ -235,6 +238,10 @@ private struct CalendarDueRow: View {
 
     /// Past days show the "Pay" link only when they are today or later.
     private var payURL: URL? { daysAway >= 0 ? item.payURL : nil }
+
+    /// "Mark paid" and "Mark unpaid" belong to one due day of the card: the coming one, or the one marked as paid.
+    /// The same card on its due day in another month has no button, so a tap can never change a different month.
+    private var showsPaidToggle: Bool { daysAway >= 0 && item.isActionDay(date) }
 
     private var whenColor: Color {
         guard daysAway >= 0 else { return Theme.textSecondary }
@@ -256,14 +263,7 @@ private struct CalendarDueRow: View {
                             .font(.app(16, .semibold))
                             .foregroundStyle(Theme.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                        HStack(spacing: 0) {
-                            Text("Due \(date.formatted(.dateTime.month(.abbreviated).day())) · ")
-                                .font(.app(13))
-                                .foregroundStyle(Theme.textSecondary)
-                            Text(DueWording.text(daysAway: daysAway))
-                                .font(.app(13, daysAway >= 0 && daysAway <= DashboardData.dueSoonDays ? .semibold : .regular))
-                                .foregroundStyle(whenColor)
-                        }
+                        dueLine
                     }
 
                     Spacer(minLength: 8)
@@ -280,30 +280,48 @@ private struct CalendarDueRow: View {
                 .accessibilityElement(children: .combine)
                 .padding(.top, 14)
                 .padding(.horizontal, 14)
-                .padding(.bottom, payURL == nil ? 14 : 2)
+                .padding(.bottom, payURL == nil && !showsPaidToggle ? 14 : 2)
             }
             .buttonStyle(RowButtonStyle())
             .accessibilityHint("Edit this card")
 
-            if let url = payURL {
-                Button { onPay(url) } label: {
-                    HStack(spacing: 4) {
-                        Text(item.payTitle)
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .frame(minHeight: 40, alignment: .leading)
-                    .padding(.leading, 14 + 40 + 14)
-                    .padding(.trailing, 14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(TextLinkButtonStyle(size: 14))
-                .accessibilityLabel("\(item.payTitle), \(item.card.catalogCard.displayName)")
-                .accessibilityHint("Opens the lender's website or app")
+            if payURL != nil || showsPaidToggle {
+                CardActionsRow(
+                    payURL: payURL,
+                    payTitle: item.payTitle,
+                    name: item.card.catalogCard.displayName,
+                    isPaid: item.isPaid,
+                    onPay: onPay,
+                    onTogglePaid: showsPaidToggle ? onTogglePaid : nil
+                )
             }
         }
         .dashboardCardStyle()
+    }
+
+    /// "Due Nov 28 · in 2 days", or "Paid · next due Dec 28" on the due day that was marked as paid.
+    @ViewBuilder
+    private var dueLine: some View {
+        if item.isPaidDay(date) {
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.accentText)
+                    .accessibilityHidden(true)
+                Text("Paid · next due \(item.dueOnText)")
+                    .font(.app(13))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        } else {
+            HStack(spacing: 0) {
+                Text("Due \(date.formatted(.dateTime.month(.abbreviated).day())) · ")
+                    .font(.app(13))
+                    .foregroundStyle(Theme.textSecondary)
+                Text(DueWording.text(daysAway: daysAway))
+                    .font(.app(13, daysAway >= 0 && daysAway <= DashboardData.dueSoonDays ? .semibold : .regular))
+                    .foregroundStyle(whenColor)
+            }
+        }
     }
 }
 

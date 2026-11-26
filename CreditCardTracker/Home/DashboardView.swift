@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The home screen: totals, the card due next, and every card in a list the user can sort.
-/// Tapping a card opens its details to edit. "Pay" opens the lender's page, "Mark paid" moves a card on to
-/// next month's due day. Shown after "Confirm and finish".
+/// Tapping a card opens its details to edit. "Pay" opens the lender's page. "Mark paid" moves a card on to
+/// next month's due day, and "Mark unpaid" brings it back. Shown after "Confirm and finish".
 struct DashboardView: View {
     @EnvironmentObject private var store: OnboardingStore
     /// Opens a web address the way the phone normally does: in Safari, or in the bank's app if it is
@@ -80,23 +80,7 @@ struct DashboardView: View {
         .sheet(isPresented: addingCards) {
             AddCardSheet()
         }
-        .safeAreaInset(edge: .bottom) {
-            if let notice = justPaid {
-                PaidUndoBar(name: notice.name) { undoPaid(notice.id) }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        // Hides the bar after a few seconds. Starts over when another card is marked, and ends at once
-        // when the bar is closed by "Undo".
-        .task(id: justPaid?.id) {
-            guard justPaid != nil else { return }
-            do {
-                try await Task.sleep(for: .seconds(6))
-            } catch {
-                return
-            }
-            withAnimation { justPaid = nil }
-        }
+        .paidUndoBar($justPaid) { undoPaid($0) }
     }
 
     // MARK: Actions
@@ -199,8 +183,7 @@ struct DashboardView: View {
                     sort: sort,
                     onEdit: { editing = EditTarget(id: item.id) },
                     onPay: { openURL($0) },
-                    onMarkPaid: { markPaid(item) },
-                    onUndoPaid: { undoPaid(item.id) }
+                    onTogglePaid: { item.isPaid ? undoPaid(item.id) : markPaid(item) }
                 )
             }
 
@@ -392,17 +375,14 @@ private struct CompactPayButtonStyle: ButtonStyle {
 // MARK: - Rows
 
 /// One card with complete details: badge, name, due date, balance and a second line that follows the sort.
-/// Under the due date is a "Pay Chase"-style link when the lender has one. Pressing and holding offers "Mark paid".
+/// Under the due date is a "Pay Chase"-style link when the lender has one, and "Mark paid" (or "Mark unpaid"
+/// once it is marked) on the right. Pressing and holding offers the same.
 private struct DashboardCardRow: View {
     let item: DashboardCard
     let sort: CardSort
     let onEdit: () -> Void
     let onPay: (URL) -> Void
-    let onMarkPaid: () -> Void
-    let onUndoPaid: () -> Void
-
-    /// Space to the left of the text: the row's padding, the badge and the gap after it.
-    private static let textInset: CGFloat = 14 + 40 + 14
+    let onTogglePaid: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -410,37 +390,28 @@ private struct DashboardCardRow: View {
                 content
                     .padding(.top, 14)
                     .padding(.horizontal, 14)
-                    .padding(.bottom, item.payURL == nil ? 14 : 2)
+                    .padding(.bottom, 2)
             }
             .buttonStyle(RowButtonStyle())
             .accessibilityHint("Edit this card")
 
-            if let url = item.payURL {
-                Button { onPay(url) } label: {
-                    HStack(spacing: 4) {
-                        Text(item.payTitle)
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .frame(minHeight: 40, alignment: .leading)
-                    .padding(.leading, Self.textInset)
-                    .padding(.trailing, 14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(TextLinkButtonStyle(size: 14))
-                .accessibilityLabel("\(item.payTitle), \(item.card.catalogCard.displayName)")
-                .accessibilityHint("Opens the lender's website or app")
-            }
+            CardActionsRow(
+                payURL: item.payURL,
+                payTitle: item.payTitle,
+                name: item.card.catalogCard.displayName,
+                isPaid: item.isPaid,
+                onPay: onPay,
+                onTogglePaid: onTogglePaid
+            )
         }
         .dashboardCardStyle()
         .contextMenu {
             if item.isPaid {
-                Button(action: onUndoPaid) {
-                    Label("Undo mark as paid", systemImage: "arrow.uturn.backward")
+                Button(action: onTogglePaid) {
+                    Label("Mark unpaid", systemImage: "arrow.uturn.backward")
                 }
             } else {
-                Button(action: onMarkPaid) {
+                Button(action: onTogglePaid) {
                     Label("Mark paid", systemImage: "checkmark.circle")
                 }
                 if let url = item.payURL {
@@ -574,9 +545,31 @@ struct IncompleteCardRow: View {
 // MARK: - Mark paid
 
 /// Which card was just marked as paid, for the "Undo" bar.
-private struct PaidNotice: Equatable {
+struct PaidNotice: Equatable {
     let id: UUID
     let name: String
+}
+
+extension View {
+    /// Shows the "marked as paid. Undo" bar at the bottom while `notice` is set. The bar hides itself after a
+    /// few seconds, starts over when another card is marked, and ends at once when "Undo" is tapped.
+    func paidUndoBar(_ notice: Binding<PaidNotice?>, onUndo: @escaping (UUID) -> Void) -> some View {
+        safeAreaInset(edge: .bottom) {
+            if let current = notice.wrappedValue {
+                PaidUndoBar(name: current.name) { onUndo(current.id) }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .task(id: notice.wrappedValue?.id) {
+            guard notice.wrappedValue != nil else { return }
+            do {
+                try await Task.sleep(for: .seconds(6))
+            } catch {
+                return
+            }
+            withAnimation { notice.wrappedValue = nil }
+        }
+    }
 }
 
 /// A bar at the bottom of the screen: "Chase Sapphire Preferred marked as paid. Undo".

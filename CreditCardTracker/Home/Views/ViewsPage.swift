@@ -35,6 +35,8 @@ struct ViewsPage: View {
     /// Shared with the home screen's sort button.
     @AppStorage("dashboardSort") private var sortName = CardSort.dueDate.rawValue
     @State private var editing: EditTarget?
+    /// The card just marked as paid, so the "Undo" bar can offer to take it back for a few seconds.
+    @State private var justPaid: PaidNotice?
 
     private var mode: ViewMode {
         ViewMode(rawValue: modeName) ?? .calendar
@@ -65,6 +67,22 @@ struct ViewsPage: View {
         .navigationBarBackButtonHidden(true)
         .sheet(item: $editing) { target in
             EditCardSheet(cardID: target.id)
+        }
+        .paidUndoBar($justPaid) { id in
+            store.undoPaid(id)
+            withAnimation { justPaid = nil }
+        }
+    }
+
+    // MARK: Actions
+
+    /// "Mark paid" on a card that is not marked, "Mark unpaid" on one that is. Marking paid also shows the
+    /// "Undo" bar, because the card moves on to next month's due day and can disappear from the day or week it was in.
+    private func togglePaid(_ item: DashboardCard) {
+        if store.togglePaid(item) {
+            withAnimation { justPaid = PaidNotice(id: item.id, name: item.card.catalogCard.displayName) }
+        } else {
+            withAnimation { justPaid = nil }
         }
     }
 
@@ -147,26 +165,30 @@ struct ViewsPage: View {
                 CalendarModeView(
                     data: data,
                     onEdit: { editing = EditTarget(id: $0) },
-                    onPay: { openURL($0) }
+                    onPay: { openURL($0) },
+                    onTogglePaid: { togglePaid($0) }
                 )
             case .tiles:
                 TilesModeView(
                     data: data,
                     sortName: $sortName,
                     onEdit: { editing = EditTarget(id: $0) },
-                    onPay: { openURL($0) }
+                    onPay: { openURL($0) },
+                    onTogglePaid: { togglePaid($0) }
                 )
             case .byBank:
                 ByBankModeView(
                     data: data,
                     onEdit: { editing = EditTarget(id: $0) },
-                    onPay: { openURL($0) }
+                    onPay: { openURL($0) },
+                    onTogglePaid: { togglePaid($0) }
                 )
             case .byWeek:
                 ByWeekModeView(
                     data: data,
                     onEdit: { editing = EditTarget(id: $0) },
-                    onPay: { openURL($0) }
+                    onPay: { openURL($0) },
+                    onTogglePaid: { togglePaid($0) }
                 )
             case .chart:
                 ChartModeView(data: data)

@@ -5,6 +5,7 @@ struct ByWeekModeView: View {
     let data: DashboardData
     let onEdit: (UUID) -> Void
     let onPay: (URL) -> Void
+    let onTogglePaid: (DashboardCard) -> Void
 
     var body: some View {
         let sections = WeekSection.sections(from: data.cards)
@@ -71,8 +72,10 @@ struct ByWeekModeView: View {
                     payURL: item.payURL,
                     payTitle: item.payTitle,
                     name: item.card.catalogCard.displayName,
+                    isPaid: item.isPaid,
                     onEdit: { onEdit(item.id) },
-                    onPay: onPay
+                    onPay: onPay,
+                    onTogglePaid: { onTogglePaid(item) }
                 ) {
                     HStack(spacing: 14) {
                         CardBadge(card: item.card.catalogCard)

@@ -130,6 +130,8 @@ struct DashboardCard: Identifiable, Hashable {
     let nextDueDate: Date
     /// True when this month's payment was marked paid. The due date above is then the one after it.
     let isPaid: Bool
+    /// The due day that was marked as paid, like Nov 28 when `nextDueDate` is Dec 28. Nil when nothing is marked.
+    let paidDueDate: Date?
 
     var id: UUID { card.id }
     /// The bank's page to open from the Pay button. Nil when there is no link for the bank, or the
@@ -139,6 +141,19 @@ struct DashboardCard: Identifiable, Hashable {
     var payTitle: String { PayLinks.buttonTitle(for: card.catalogCard) }
     var apr: Decimal? { card.details.apr }
     var urgency: DueUrgency { DueUrgency(daysUntilDue: daysUntilDue) }
+
+    /// True when `date` is the due day that "Mark paid" or "Mark unpaid" acts on: the coming due day, or the
+    /// one that was marked paid. The calendar uses this to show the button on that day only, not on
+    /// the same card's due day in other months.
+    func isActionDay(_ date: Date, calendar: Calendar = .current) -> Bool {
+        calendar.isDate(date, inSameDayAs: paidDueDate ?? nextDueDate)
+    }
+
+    /// True when `date` is the due day that was marked as paid.
+    func isPaidDay(_ date: Date, calendar: Calendar = .current) -> Bool {
+        guard let paidDueDate else { return false }
+        return calendar.isDate(date, inSameDayAs: paidDueDate)
+    }
 
     /// "today", "tomorrow" or "in 5 days"
     var whenText: String {
@@ -168,11 +183,13 @@ struct DashboardCard: Identifiable, Hashable {
 
         var next = coming
         var paid = false
+        var paidDay: Date?
         if let paidDue, calendar.isDate(paidDue, inSameDayAs: coming),
            let dayAfter = calendar.date(byAdding: .day, value: 1, to: coming),
            let following = dueDate.nextDue(onOrAfter: dayAfter, calendar: calendar) {
             next = following
             paid = true
+            paidDay = coming
         }
 
         guard let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: today), to: next).day
@@ -190,6 +207,7 @@ struct DashboardCard: Identifiable, Hashable {
         self.daysUntilDue = days
         self.nextDueDate = next
         self.isPaid = paid
+        self.paidDueDate = paidDay
     }
 }
 

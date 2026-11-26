@@ -6,6 +6,7 @@ struct TilesModeView: View {
     @Binding var sortName: String
     let onEdit: (UUID) -> Void
     let onPay: (URL) -> Void
+    let onTogglePaid: (DashboardCard) -> Void
 
     /// What goes in one cell of the grid.
     private enum Item: Identifiable {
@@ -66,7 +67,12 @@ struct TilesModeView: View {
     private func tile(for item: Item) -> some View {
         switch item {
         case .card(let card):
-            CardTile(item: card, onEdit: { onEdit(card.id) }, onPay: onPay)
+            CardTile(
+                item: card,
+                onEdit: { onEdit(card.id) },
+                onPay: onPay,
+                onTogglePaid: { onTogglePaid(card) }
+            )
         case .incomplete(let card):
             IncompleteTile(card: card) { onEdit(card.id) }
         }
@@ -78,6 +84,7 @@ private struct CardTile: View {
     let item: DashboardCard
     let onEdit: () -> Void
     let onPay: (URL) -> Void
+    let onTogglePaid: () -> Void
 
     private var chipText: String { item.isPaid ? "Paid" : item.whenText }
 
@@ -129,7 +136,7 @@ private struct CardTile: View {
                 .accessibilityElement(children: .combine)
                 .padding(.top, 14)
                 .padding(.horizontal, 14)
-                .padding(.bottom, item.payURL == nil ? 14 : 0)
+                .padding(.bottom, 0)
             }
             .buttonStyle(RowButtonStyle())
             .accessibilityHint("Edit this card")
@@ -152,6 +159,11 @@ private struct CardTile: View {
                 .accessibilityLabel("\(item.payTitle), \(item.card.catalogCard.displayName)")
                 .accessibilityHint("Opens the lender's website or app")
             }
+
+            // Under the Pay link: a tile is too narrow to put the two side by side.
+            PaidToggleButton(isPaid: item.isPaid, name: item.card.catalogCard.displayName, action: onTogglePaid)
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
         }
