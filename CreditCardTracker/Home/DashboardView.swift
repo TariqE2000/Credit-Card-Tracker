@@ -227,15 +227,15 @@ private struct SummaryCard: View {
 
 // MARK: - Due soon
 
-/// The card due next, shown when it is due within the week. "Pay" opens the lender's page and
-/// "Mark paid" moves the card on to next month's due day.
+/// The card due next, shown when it is due within the week. The buttons are on the right: "Pay" opens the
+/// lender's page and "Mark paid" moves the card on to next month's due day.
 private struct DueSoonBanner: View {
     let card: DashboardCard
     let onPay: (URL) -> Void
     let onMarkPaid: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(card.dueChipText)
                     .font(.app(12, .semibold))
@@ -256,37 +256,37 @@ private struct DueSoonBanner: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
 
-            HStack(spacing: 10) {
+            VStack(spacing: 2) {
                 if let url = card.payURL {
-                    // The title names the lender the link opens, e.g. "Pay Capital One".
+                    // The title names the lender the link opens, e.g. "Pay Capital One". A long name such as
+                    // "Pay American Express" wraps onto a second line instead of squeezing the card name.
                     Button { onPay(url) } label: {
                         HStack(spacing: 6) {
                             Text(card.payTitle)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
                             Image(systemName: "arrow.up.right")
                                 .font(.system(size: 12, weight: .semibold))
                         }
-                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(CompactPayButtonStyle())
+                    .frame(maxWidth: 180)
                     .accessibilityLabel("\(card.payTitle), \(card.card.catalogCard.displayName)")
                     .accessibilityHint("Opens the lender's website or app")
 
                     Button("Mark paid", action: onMarkPaid)
-                        .buttonStyle(TextLinkButtonStyle(size: 15))
-                        .frame(minWidth: 88, minHeight: 44)
+                        .buttonStyle(TextLinkButtonStyle(size: 14))
+                        .frame(minHeight: 44)
                         .accessibilityHint("Moves this card on to next month's due date")
                 } else {
                     // No lender page to open for this card, so marking it paid is the one action.
-                    Button { onMarkPaid() } label: {
-                        Text("Mark paid")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(CompactPayButtonStyle())
-                    .accessibilityHint("Moves this card on to next month's due date")
+                    Button("Mark paid", action: onMarkPaid)
+                        .buttonStyle(CompactPayButtonStyle())
+                        .accessibilityHint("Moves this card on to next month's due date")
                 }
             }
+            .layoutPriority(1)
         }
         .padding(16)
         .background(
