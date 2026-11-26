@@ -241,17 +241,27 @@ final class DashboardTests: XCTestCase {
 
     // MARK: Pay links on cards
 
-    func testCardsGetTheirBanksPayLinkAndTitle() {
+    func testCardsGetTheirOwnLendersPayLinkAndTitle() {
         let cards = [
             card("Sapphire", issuer: "Chase", balance: "1", minimum: "1", due: (11, 28), issuerID: "chase"),
+            card("Double Cash", issuer: "Citi", balance: "1", minimum: "1", due: (11, 28), issuerID: "citi"),
+            card("Quicksilver", issuer: "Capital One", balance: "1", minimum: "1", due: (11, 28), issuerID: "capital-one"),
+            card("Gold", issuer: "American Express", balance: "1", minimum: "1", due: (11, 28), issuerID: "amex"),
             card("Apple Card", issuer: "Apple", balance: "1", minimum: "1", due: (11, 28)),
         ]
         let result = data(cards: cards).cards
-        let sapphire = result.first { $0.card.catalogCard.name == "Sapphire" }
-        let apple = result.first { $0.card.catalogCard.name == "Apple Card" }
-        XCTAssertEqual(sapphire?.payURL?.host, "www.chase.com")
-        XCTAssertEqual(sapphire?.payTitle, "Pay Chase")
-        XCTAssertNil(apple?.payURL)
+        func item(_ name: String) -> DashboardCard? { result.first { $0.card.catalogCard.name == name } }
+
+        XCTAssertEqual(item("Sapphire")?.payTitle, "Pay Chase")
+        XCTAssertEqual(item("Sapphire")?.payURL?.host, "www.chase.com")
+        XCTAssertEqual(item("Double Cash")?.payTitle, "Pay Citi")
+        XCTAssertEqual(item("Double Cash")?.payURL?.host, "www.citi.com")
+        XCTAssertEqual(item("Quicksilver")?.payTitle, "Pay Capital One")
+        XCTAssertEqual(item("Quicksilver")?.payURL?.host, "verified.capitalone.com")
+        XCTAssertEqual(item("Gold")?.payTitle, "Pay American Express")
+        XCTAssertEqual(item("Gold")?.payURL?.host, "www.americanexpress.com")
+        // No lender link for Apple Card, so no Pay button and no lender name.
+        XCTAssertNil(item("Apple Card")?.payURL)
     }
 
     // MARK: Sorting

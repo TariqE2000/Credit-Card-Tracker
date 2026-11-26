@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The home screen: totals, the card due next, and every card in a list the user can sort.
-/// Tapping a card opens its details to edit. "Pay" opens the bank's page, "Mark paid" moves a card on to
+/// Tapping a card opens its details to edit. "Pay" opens the lender's page, "Mark paid" moves a card on to
 /// next month's due day. Shown after "Confirm and finish".
 struct DashboardView: View {
     @EnvironmentObject private var store: OnboardingStore
@@ -227,7 +227,7 @@ private struct SummaryCard: View {
 
 // MARK: - Due soon
 
-/// The card due next, shown when it is due within the week. "Pay" opens the bank's page and
+/// The card due next, shown when it is due within the week. "Pay" opens the lender's page and
 /// "Mark paid" moves the card on to next month's due day.
 private struct DueSoonBanner: View {
     let card: DashboardCard
@@ -235,7 +235,7 @@ private struct DueSoonBanner: View {
     let onMarkPaid: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(card.dueChipText)
                     .font(.app(12, .semibold))
@@ -256,32 +256,37 @@ private struct DueSoonBanner: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
 
-            VStack(spacing: 2) {
+            HStack(spacing: 10) {
                 if let url = card.payURL {
+                    // The title names the lender the link opens, e.g. "Pay Capital One".
                     Button { onPay(url) } label: {
                         HStack(spacing: 6) {
                             Text(card.payTitle)
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                             Image(systemName: "arrow.up.right")
                                 .font(.system(size: 12, weight: .semibold))
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(CompactPayButtonStyle())
                     .accessibilityLabel("\(card.payTitle), \(card.card.catalogCard.displayName)")
-                    .accessibilityHint("Opens the bank's website or app")
+                    .accessibilityHint("Opens the lender's website or app")
 
                     Button("Mark paid", action: onMarkPaid)
-                        .buttonStyle(TextLinkButtonStyle(size: 14))
-                        .frame(minHeight: 44)
+                        .buttonStyle(TextLinkButtonStyle(size: 15))
+                        .frame(minWidth: 88, minHeight: 44)
                         .accessibilityHint("Moves this card on to next month's due date")
                 } else {
-                    // No bank page to open for this card, so marking it paid is the one action.
-                    Button("Mark paid", action: onMarkPaid)
-                        .buttonStyle(CompactPayButtonStyle())
-                        .accessibilityHint("Moves this card on to next month's due date")
+                    // No lender page to open for this card, so marking it paid is the one action.
+                    Button { onMarkPaid() } label: {
+                        Text("Mark paid")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(CompactPayButtonStyle())
+                    .accessibilityHint("Moves this card on to next month's due date")
                 }
             }
-            .layoutPriority(1)
         }
         .padding(16)
         .background(
@@ -307,7 +312,7 @@ private struct CompactPayButtonStyle: ButtonStyle {
 // MARK: - Rows
 
 /// One card with complete details: badge, name, due date, balance and a second line that follows the sort.
-/// Under the due date is a "Pay" link when the bank has one. Pressing and holding offers "Mark paid".
+/// Under the due date is a "Pay Chase"-style link when the lender has one. Pressing and holding offers "Mark paid".
 private struct DashboardCardRow: View {
     let item: DashboardCard
     let sort: CardSort
@@ -333,7 +338,7 @@ private struct DashboardCardRow: View {
             if let url = item.payURL {
                 Button { onPay(url) } label: {
                     HStack(spacing: 4) {
-                        Text("Pay")
+                        Text(item.payTitle)
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 11, weight: .semibold))
                     }
@@ -344,8 +349,8 @@ private struct DashboardCardRow: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(TextLinkButtonStyle(size: 14))
-                .accessibilityLabel("Pay \(item.card.catalogCard.displayName)")
-                .accessibilityHint("Opens the bank's website or app")
+                .accessibilityLabel("\(item.payTitle), \(item.card.catalogCard.displayName)")
+                .accessibilityHint("Opens the lender's website or app")
             }
         }
         .dashboardCardStyle()

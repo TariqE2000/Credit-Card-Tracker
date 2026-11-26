@@ -75,10 +75,13 @@ by pressing and holding it. Pressing and holding any card also offers Mark paid,
 the next one due. Mark paid does not change the balance you entered. It wears off by itself once the due
 day has passed, and for now it is only remembered while the app is open.
 
-Pay links are a hand-made list in `Home/PayLinks.swift` for the nine biggest card banks (Chase, American
-Express, Barclays, U.S. Bank, Synchrony, Capital One, Bank of America, Citi, Wells Fargo). A card from any
-other bank, or a card you typed in yourself, has no Pay button. Only Chase, Synchrony, Capital One and
-Wells Fargo go straight to a sign-in page; the others open the bank's home page, which has a Log in link.
+Pay links are a hand-made list in `Home/PayLinks.swift`. Each entry holds the lender's name and its page
+together, so the button always names the lender it opens ("Pay Chase" opens Chase, "Pay Citi" opens Citi).
+A co-branded card pays the lender that issued it: an Amazon, United or Marriott card issued by Chase says
+"Pay Chase". The list covers Chase, American Express, Barclays, U.S. Bank, Synchrony, Capital One, Bank of
+America, Citi, Wells Fargo, Discover, USAA, Navy Federal, Credit One, Truist, Citizens and FNBO. A card from
+any other lender, or a card you typed in yourself, has no Pay button. Chase, Synchrony, Capital One and
+Wells Fargo go straight to a sign-in page; the others open the lender's home page, which has a Log in link.
 
 A due date repeats every month, so the home screen works out the next date from the day you entered: a card
 entered as "Dec 14" is due on the 14th of every month. In a month too short for that day, the last day of the
@@ -86,8 +89,8 @@ month is used.
 
 ## What is not built yet
 
-- **Pay buttons for more banks.** Only the nine biggest banks have a link (see above). Each link needs
-  to be checked by hand, because banks move their sign-in pages.
+- **Pay buttons for more lenders.** Only the 16 lenders above have a link. Each link needs to be checked
+  by hand, because lenders move their sign-in pages.
 - **Saving "paid".** Mark paid is forgotten when the app closes, like the cards themselves.
 - **More ways to see your cards.** Calendar, tiles, by bank, by week, a balance chart and highest interest
   first are designed but not built.

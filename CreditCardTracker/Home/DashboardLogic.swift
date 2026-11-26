@@ -135,7 +135,7 @@ struct DashboardCard: Identifiable, Hashable {
     /// The bank's page to open from the Pay button. Nil when there is no link for the bank, or the
     /// payment is already marked paid.
     var payURL: URL? { isPaid ? nil : PayLinks.url(for: card.catalogCard) }
-    /// "Pay Chase", or just "Pay" for a long bank name.
+    /// "Pay Chase": the lender this card is paid to, which is also the lender the link opens.
     var payTitle: String { PayLinks.buttonTitle(for: card.catalogCard) }
     var apr: Decimal? { card.details.apr }
     var urgency: DueUrgency { DueUrgency(daysUntilDue: daysUntilDue) }
