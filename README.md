@@ -8,8 +8,9 @@ If you carry several credit cards, the numbers that matter (what you owe, the mi
 is due) are scattered across a different app or statement for each issuer. Credit Card Tracker puts them on
 one screen so you can see your total balance and what is due next without logging in to anything.
 
-> **Status: early MVP.** The onboarding flow and the home screen are built. Paying from the app, extra
-> views (calendar, chart and more), real sign-in and saving your data are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
+> **Status: early MVP.** The onboarding flow and the home screen, with Pay and Mark paid, are built. Extra
+> views (calendar, chart and more), adding a card from the home screen, real sign-in and saving your data
+> are not built yet. See [What works today](#what-works-today) and [What is not built yet](#what-is-not-built-yet).
 
 ## How it works
 
@@ -64,14 +65,33 @@ of the totals, with an "Add details" link.
 Tap any card to open its details in the same form used during setup. You can change the balance, minimum
 payment, due date and interest rate, or remove the card.
 
+**Pay and Mark paid.** The card due within a week gets a banner with two buttons. **Pay** opens the bank's
+own web page (for example "Pay Chase"), where you sign in and pay. It opens the way any link opens on an
+iPhone: in Safari, or in the bank's app if you have it and the bank has set that link up to open there.
+The app never sees your bank password or card number and never makes a payment itself. **Mark paid** moves
+the card on to next month's due date, so the banner and "due in 7 days" stop counting it, and a bar at the
+bottom offers **Undo** for a few seconds. A paid card shows "Paid · next due Dec 28" and can be un-marked
+by pressing and holding it. Pressing and holding any card also offers Mark paid, for cards that are not
+the next one due. Mark paid does not change the balance you entered. It wears off by itself once the due
+day has passed, and for now it is only remembered while the app is open.
+
+Pay links are a hand-made list in `Home/PayLinks.swift`. Each entry holds the lender's name and its page
+together, so the button always names the lender it opens ("Pay Chase" opens Chase, "Pay Citi" opens Citi).
+A co-branded card pays the lender that issued it: an Amazon, United or Marriott card issued by Chase says
+"Pay Chase". The list covers Chase, American Express, Barclays, U.S. Bank, Synchrony, Capital One, Bank of
+America, Citi, Wells Fargo, Discover, USAA, Navy Federal, Credit One, Truist, Citizens and FNBO. A card from
+any other lender, or a card you typed in yourself, has no Pay button. Chase, Synchrony, Capital One and
+Wells Fargo go straight to a sign-in page; the others open the lender's home page, which has a Log in link.
+
 A due date repeats every month, so the home screen works out the next date from the day you entered: a card
 entered as "Dec 14" is due on the 14th of every month. In a month too short for that day, the last day of the
 month is used.
 
 ## What is not built yet
 
-- **Pay buttons.** The plan is a hand-made list of each bank's own login page that opens in the app's
-  browser. Nothing is built for it yet.
+- **Pay buttons for more lenders.** Only the 16 lenders above have a link. Each link needs to be checked
+  by hand, because lenders move their sign-in pages.
+- **Saving "paid".** Mark paid is forgotten when the app closes, like the cards themselves.
 - **More ways to see your cards.** Calendar, tiles, by bank, by week, a balance chart and highest interest
   first are designed but not built.
 - **Adding a card from the home screen.** You can edit or remove a card there, but picking a new one is
@@ -166,7 +186,7 @@ CreditCardTracker/
     FormInput.swift         Reads and formats what the user types
     Screens/                Sign up, Log in, Pick cards, Card form, Review
     Components/             Rows, form pieces, social buttons, due date picker sheet
-  Home/           Home screen (DashboardView) and its sorting and due date logic
+  Home/           Home screen (DashboardView), its sorting and due date logic, and PayLinks (bank pages)
 CreditCardTrackerTests/     Unit tests
 ```
 
